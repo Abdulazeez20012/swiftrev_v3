@@ -1,0 +1,26 @@
+{
+    "name": "swiftrev-v3",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev": "turbo run dev",
+        "build": "turbo run build",
+        "test": "turbo run test",
+        "lint": "turbo run lint",
+        "clean": "turbo run clean && rm -rf node_modules",
+        "api:dev": "cd apps/api && npm run start:dev",
+        "web:dev": "cd apps/web && npm run dev",
+        "mobile:dev": "cd apps/mobile && npm start"
+    },
+    "devDependencies": {
+        "turbo": "^1.10.0"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=9.0.0"
+    }
+}

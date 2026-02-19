@@ -1,0 +1,134 @@
+import React from 'react';
+import { Search, Filter, Download, CreditCard, ExternalLink, MoreVertical, CheckCircle2, Clock, XCircle } from 'lucide-react';
+
+interface Transaction {
+    id: string;
+    hospital: string;
+    patient: string;
+    amount: number;
+    method: string;
+    status: 'paid' | 'pending' | 'failed';
+    date: string;
+}
+
+const transactions: Transaction[] = [
+    { id: 'TX-1001', hospital: 'City General', patient: 'John Doe', amount: 15400.00, method: 'SwiftPay', status: 'paid', date: '2026-02-11 14:23' },
+    { id: 'TX-1002', hospital: 'LUTH', patient: 'Jane Smith', amount: 85000.00, method: 'Bank Transfer', status: 'pending', date: '2026-02-11 13:10' },
+    { id: 'TX-1003', hospital: 'Evercare', patient: 'Babatunde Alani', amount: 12400.00, method: 'Card', status: 'paid', date: '2026-02-11 11:45' },
+    { id: 'TX-1004', hospital: 'Reddington', patient: 'Chidinma Oke', amount: 4500.00, method: 'Cash', status: 'failed', date: '2026-02-10 16:20' },
+    { id: 'TX-1005', hospital: 'City General', patient: 'Adekunle Gold', amount: 32000.00, method: 'SwiftPay', status: 'paid', date: '2026-02-10 15:45' },
+    { id: 'TX-1006', hospital: 'LUTH', patient: 'Sarah Johnson', amount: 21500.00, method: 'Card', status: 'paid', date: '2026-02-10 14:30' },
+];
+
+export const Payments: React.FC = () => {
+    return (
+        <div className="space-y-8">
+            <div className="flex justify-between items-end">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Payments Overview</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Consolidated real-time view of all hospital transactions.</p>
+                </div>
+                <div className="flex gap-3">
+                    <button className="px-4 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors">
+                        <Download size={16} /> Export Report
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50">
+                    <div className="flex gap-4 items-center">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search transactions..."
+                                className="pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary w-64 shadow-sm"
+                            />
+                        </div>
+                        <button className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-white transition-colors">
+                            <Filter size={14} /> Status: All
+                        </button>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium tracking-wide">Showing 154 transactions</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-gray-50/30 dark:bg-slate-900/30 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                <th className="px-6 py-4">Transaction ID</th>
+                                <th className="px-6 py-4">Hospital / Patient</th>
+                                <th className="px-6 py-4">Amount</th>
+                                <th className="px-6 py-4">Method</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Date</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                            {transactions.map((tx) => (
+                                <tr key={tx.id} className="group hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td className="px-6 py-5">
+                                        <span className="font-mono text-xs font-bold text-slate-400 group-hover:text-primary transition-colors underline decoration-slate-200 decoration-1 underline-offset-4">{tx.id}</span>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <div>
+                                            <p className="font-semibold text-slate-900 dark:text-slate-100">{tx.hospital}</p>
+                                            <p className="text-xs text-slate-500">{tx.patient}</p>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <span className="font-bold text-slate-900 dark:text-slate-100">₦{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
+                                            <CreditCard size={14} />
+                                            {tx.method}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <StatusBadge status={tx.status} />
+                                    </td>
+                                    <td className="px-6 py-5 text-sm text-slate-500 dark:text-slate-400 italic">
+                                        {tx.date}
+                                    </td>
+                                    <td className="px-6 py-5 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button className="p-2 text-gray-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg">
+                                                <ExternalLink size={16} />
+                                            </button>
+                                            <button className="p-2 text-gray-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+                                                <MoreVertical size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-900/30 flex justify-center">
+                    <button className="text-sm font-semibold text-primary hover:underline">Load More Transactions</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const StatusBadge: React.FC<{ status: Transaction['status'] }> = ({ status }) => {
+    const configs = {
+        paid: { color: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: <CheckCircle2 size={12} />, label: 'Paid' },
+        pending: { color: 'bg-amber-50 text-amber-700 border-amber-100', icon: <Clock size={12} />, label: 'Pending' },
+        failed: { color: 'bg-rose-50 text-rose-700 border-rose-100', icon: <XCircle size={12} />, label: 'Failed' },
+    };
+
+    const config = configs[status];
+
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${config.color}`}>
+            {config.icon}
+            {config.label}
+        </span>
+    );
+};

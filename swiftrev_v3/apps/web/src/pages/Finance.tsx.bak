@@ -1,0 +1,381 @@
+import React, { useState, useEffect } from 'react';
+import {
+    CreditCard,
+    Building2,
+    Users,
+    ArrowRight,
+    Search,
+    DollarSign,
+    TrendingUp,
+    History,
+    CheckCircle2,
+    AlertCircle
+} from 'lucide-react';
+import { useDataService } from '../hooks/useDataService';
+import type { Wallet, AgentFundingTransaction } from 'core';
+
+// Mock Data for Hospitals and Agents (since we don't have a full backend for these yet)
+const MOCK_HOSPITALS = [
+    { id: '1', name: 'City General Hospital' },
+    { id: '2', name: 'Lagos University Teaching Hospital (LUTH)' },
+    { id: '3', name: 'Evercare Hospital' },
+    { id: '4', name: 'Reddington Hospital' },
+];
+
+const MOCK_AGENTS = [
+    { id: 'A1', name: 'Fatima Musa', hospitalId: '1' },
+    { id: 'A2', name: 'Emeka Okonkwo', hospitalId: '1' },
+    { id: 'B1', name: 'Chioma Adebayo', hospitalId: '2' },
+    { id: 'C1', name: 'Yusuf Ibrahim', hospitalId: '3' },
+];
+
+export const Finance: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'topup'>('dashboard');
+
+    return (
+        <div className="space-y-8">
+            <div className="flex justify-between items-end">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Finance Administration</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Manage agent wallets and monitor consolidated revenue.</p>
+                </div>
+                <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                    <button
+                        onClick={() => setActiveTab('dashboard')}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'dashboard'
+                            ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            }`}
+                    >
+                        Dashboard
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('topup')}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'topup'
+                            ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            }`}
+                    >
+                        Top-Up & Funding
+                    </button>
+                </div>
+            </div>
+
+            {activeTab === 'dashboard' ? <FinanceDashboard /> : <TopUpModule />}
+        </div>
+    );
+};
+
+const FinanceDashboard: React.FC = () => {
+    // Consolidated stats (mocked for now, but structure is ready for generic data)
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard
+                    title="Total Consolidated Revenue"
+                    value="₦314.6M"
+                    trend="+12.5%"
+                    icon={<DollarSign />}
+                    color="text-emerald-600 bg-emerald-100"
+                />
+                <StatCard
+                    title="Active Agents Wallet Balance"
+                    value="₦4.2M"
+                    trend="Safe Level"
+                    icon={<CreditCard />}
+                    color="text-blue-600 bg-blue-100"
+                />
+                <StatCard
+                    title="Total Transactions (Today)"
+                    value="1,245"
+                    trend="+5%"
+                    icon={<TrendingUp />}
+                    color="text-purple-600 bg-purple-100"
+                />
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6">
+                <h3 className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-50">Revenue by Hospital</h3>
+                <div className="space-y-4">
+                    {MOCK_HOSPITALS.map((h, i) => (
+                        <div key={h.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
+                            <div className="flex items-center gap-4">
+                                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs">
+                                    {h.name.charAt(0)}
+                                </div>
+                                <span className="font-medium text-slate-700 dark:text-slate-200">{h.name}</span>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold text-slate-900 dark:text-slate-50">₦{((4 - i) * 23.5).toFixed(1)}M</p>
+                                <p className="text-xs text-slate-500">Updated 10m ago</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const StatCard: React.FC<{ title: string; value: string; trend: string; icon: React.ReactNode; color: string }> = ({ title, value, trend, icon, color }) => (
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm">
+        <div className="flex justify-between items-start mb-4">
+            <div className={`p-3 rounded-xl ${color}`}>
+                {React.cloneElement(icon as React.ReactElement, { size: 24 })}
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">{trend}</span>
+        </div>
+        <div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{title}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50 mt-1">{value}</p>
+        </div>
+    </div>
+);
+
+const TopUpModule: React.FC = () => {
+    const dataService = useDataService();
+    const [selectedHospital, setSelectedHospital] = useState('');
+    const [selectedAgent, setSelectedAgent] = useState('');
+    const [amount, setAmount] = useState('');
+    const [wallet, setWallet] = useState<Wallet | null>(null);
+    const [transactions, setTransactions] = useState<AgentFundingTransaction[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    // Fetch transactions on mount
+    useEffect(() => {
+        loadTransactions();
+    }, []);
+
+    // Fetch wallet when agent is selected
+    useEffect(() => {
+        if (selectedAgent) {
+            checkWallet(selectedAgent);
+        } else {
+            setWallet(null);
+        }
+    }, [selectedAgent]);
+
+    const loadTransactions = async () => {
+        const resp = await dataService.fundings().getAll();
+        if (resp.data) {
+            // Sort by timestamp desc
+            setTransactions(resp.data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        }
+    };
+
+    const checkWallet = async (agentId: string) => {
+        const resp = await dataService.wallets().getAll();
+        const agentWallet = resp.data?.find(w => w.agentId === agentId);
+        setWallet(agentWallet || null);
+    };
+
+    const handleFund = async () => {
+        if (!selectedHospital || !selectedAgent || !amount) return;
+        setShowConfirm(true);
+    };
+
+    const confirmTransaction = async () => {
+        setIsLoading(true);
+        const numAmount = parseFloat(amount);
+
+        // Mock Admin ID
+        const adminId = 'ADMIN-001';
+
+        const result = await dataService.fundAgentWallet(adminId, selectedHospital, selectedAgent, numAmount);
+
+        if (result.data) {
+            // Success
+            await loadTransactions();
+            await checkWallet(selectedAgent);
+            setAmount('');
+            setShowConfirm(false);
+            alert('Funding Successful! Notification sent to agent.');
+        } else {
+            alert('Funding Failed: ' + result.error?.message);
+        }
+        setIsLoading(false);
+    };
+
+    const filteredAgents = MOCK_AGENTS.filter(a => !selectedHospital || a.hospitalId === selectedHospital);
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Funding Form */}
+            <div className="lg:col-span-1 space-y-6">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                        <CreditCard className="text-primary" /> Fund Agent Wallet
+                    </h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Hospital</label>
+                            <div className="relative">
+                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <select
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary"
+                                    value={selectedHospital}
+                                    onChange={(e) => { setSelectedHospital(e.target.value); setSelectedAgent(''); }}
+                                >
+                                    <option value="">Select Hospital...</option>
+                                    {MOCK_HOSPITALS.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Agent</label>
+                            <div className="relative">
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <select
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary"
+                                    value={selectedAgent}
+                                    onChange={(e) => setSelectedAgent(e.target.value)}
+                                    disabled={!selectedHospital}
+                                >
+                                    <option value="">Select Agent...</option>
+                                    {filteredAgents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {selectedAgent && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide">Current Balance</p>
+                                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                                    ₦{wallet ? wallet.balance.toLocaleString() : '0.00'}
+                                </p>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Funding Amount (₦)</label>
+                            <input
+                                type="number"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary font-mono font-bold"
+                                placeholder="0.00"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                            />
+                        </div>
+
+                        <button
+                            className="w-full py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!selectedAgent || !amount || parseFloat(amount) <= 0}
+                            onClick={handleFund}
+                        >
+                            Review & Fund <ArrowRight size={18} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Transaction History */}
+            <div className="lg:col-span-2">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden h-full">
+                    <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                            <History className="text-gray-400" /> Audit Trail & History
+                        </h3>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                                type="text"
+                                placeholder="Search ref..."
+                                className="pl-9 pr-4 py-1.5 bg-gray-50 dark:bg-slate-800 border-none rounded-lg text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-50/50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 font-semibold">
+                                <tr>
+                                    <th className="px-6 py-4">Ref ID</th>
+                                    <th className="px-6 py-4">Agent</th>
+                                    <th className="px-6 py-4">Amount</th>
+                                    <th className="px-6 py-4">New Balance</th>
+                                    <th className="px-6 py-4">Date</th>
+                                    <th className="px-6 py-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                                {transactions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-400 italic">No transactions found.</td>
+                                    </tr>
+                                ) : (
+                                    transactions.map(tx => {
+                                        const agent = MOCK_AGENTS.find(a => a.id === tx.agentId);
+                                        return (
+                                            <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                                                <td className="px-6 py-4 font-mono text-xs text-slate-500">{tx.referenceId}</td>
+                                                <td className="px-6 py-4 font-medium">{agent?.name || tx.agentId}</td>
+                                                <td className="px-6 py-4 font-bold text-emerald-600">+₦{tx.amount.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-slate-500">₦{tx.newBalance.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-slate-500">{new Date(tx.timestamp).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full w-fit">
+                                                        <CheckCircle2 size={12} /> Success
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* Confirmation Modal */}
+            {showConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold">Confirm Funding</h3>
+                            <p className="text-slate-500">Please review the transaction details below.</p>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 space-y-3 mb-6">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Agent:</span>
+                                <span className="font-medium">{MOCK_AGENTS.find(a => a.id === selectedAgent)?.name}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Hospital:</span>
+                                <span className="font-medium">{MOCK_HOSPITALS.find(h => h.id === selectedHospital)?.name}</span>
+                            </div>
+                            <div className="border-t border-gray-200 dark:border-slate-700 my-2"></div>
+                            <div className="flex justify-between text-lg font-bold">
+                                <span>Amount:</span>
+                                <span className="text-primary">₦{parseFloat(amount).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowConfirm(false)}
+                                className="flex-1 py-3 text-slate-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmTransaction}
+                                disabled={isLoading}
+                                className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                            >
+                                {isLoading ? 'Processing...' : 'Confirm & Fund'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};

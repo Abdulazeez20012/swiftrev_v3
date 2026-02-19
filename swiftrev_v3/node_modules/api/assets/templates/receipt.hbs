@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftRev Digital Receipt</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #fff;
+            color: #000;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #F3F4F6;
+            padding: 40px;
+            border-radius: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .receipt-label {
+            text-align: right;
+        }
+
+        .receipt-label h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .receipt-label p {
+            margin: 4px 0 0;
+            color: #9CA3AF;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .detail-item h3 {
+            font-size: 10px;
+            font-weight: 900;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+
+        .detail-item p {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 60px;
+        }
+
+        .table th {
+            text-align: left;
+            padding: 20px 0;
+            border-bottom: 2px solid #000;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .table td {
+            padding: 24px 0;
+            border-bottom: 1px solid #F3F4F6;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .summary {
+            margin-left: auto;
+            width: 300px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .summary-row span:first-child {
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+
+        .summary-row span:last-child {
+            font-weight: 700;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 2px solid #000;
+        }
+
+        .total-row span:first-child {
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .total-row span:last-child {
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .footer {
+            margin-top: 100px;
+            text-align: center;
+            border-top: 1px solid #F3F4F6;
+            padding-top: 40px;
+        }
+
+        .footer p {
+            font-size: 12px;
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #F0FDF4;
+            color: #10B981;
+            padding: 6px 12px;
+            border-radius: 100px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="header">
+            <div class="logo">SwiftRev.</div>
+            <div class="receipt-label">
+                <div class="badge">Verified Payment</div>
+                <h1>Receipt</h1>
+                <p>REF: {{id}}</p>
+            </div>
+        </div>
+
+        <div class="details-grid">
+            <div class="detail-item">
+                <h3>Hospital</h3>
+                <p>{{hospitalName}}</p>
+            </div>
+            <div class="detail-item">
+                <h3>Date & Time</h3>
+                <p>{{date}}</p>
+            </div>
+            <div class="detail-item">
+                <h3>Patient</h3>
+                <p>{{patientName}}</p>
+            </div>
+            <div class="detail-item">
+                <h3>Payment Method</h3>
+                <p>{{paymentMethod}}</p>
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Department</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{revenueItemName}}</td>
+                    <td>{{departmentName}}</td>
+                    <td style="text-align: right;">₦{{amount}}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span>₦{{amount}}</span>
+            </div>
+            <div class="summary-row">
+                <span>Tax</span>
+                <span>₦0.00</span>
+            </div>
+            <div class="total-row">
+                <span>Total</span>
+                <span>₦{{amount}}</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This is a digitally generated receipt and requires no signature.</p>
+            <p>&copy; 2026 SwiftRev HERMS. Securely powered by AI.</p>
+        </div>
+    </div>
+</body>
+</html>
