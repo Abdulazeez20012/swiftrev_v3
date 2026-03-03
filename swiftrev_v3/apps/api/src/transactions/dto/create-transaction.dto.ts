@@ -28,4 +28,16 @@ export class CreateTransactionDto {
     @IsUUID()
     @IsOptional()
     offlineId?: string; // For syncing transactions created offline
+
+    @IsUUID()
+    @IsOptional()
+    insuranceProviderId?: string;
+
+    @IsString()
+    @IsOptional()
+    authCode?: string;
+
+    @IsString()
+    @IsOptional()
+    proofImageUrl?: string;
 }

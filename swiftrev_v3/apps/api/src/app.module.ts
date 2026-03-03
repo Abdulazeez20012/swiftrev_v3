@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -20,6 +19,9 @@ import { SyncModule } from './sync/sync.module';
 import { NotificationsModule } from './common/notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { MlModule } from './common/ml/ml.module';
+import { InsuranceProvidersModule } from './insurance-providers/insurance-providers.module';
+import { ClaimsModule } from './claims/claims.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -34,11 +36,13 @@ import { MlModule } from './common/ml/ml.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         connection: {
-          host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get('REDIS_PORT', 6379),
+          password: configService.get('REDIS_PASSWORD'),
         },
       }),
     }),
+
     SupabaseModule,
     RedisModule,
     AuditModule,
@@ -55,6 +59,8 @@ import { MlModule } from './common/ml/ml.module';
     NotificationsModule,
     ReportsModule,
     MlModule,
+    InsuranceProvidersModule,
+    ClaimsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

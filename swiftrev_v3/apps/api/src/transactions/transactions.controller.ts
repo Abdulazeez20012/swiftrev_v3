@@ -18,8 +18,14 @@ export class TransactionsController {
 
     @Get()
     @Permissions('transactions:read', 'transactions:all')
-    findAll(@Query('hospitalId') hospitalId: string) {
-        return this.transactionsService.findAllByHospital(hospitalId);
+    findAll(
+        @Query('hospitalId') hospitalId: string,
+        @Query('status') status?: string,
+        @Query('paymentMethod') paymentMethod?: string,
+        @Query('limit') limit?: number,
+        @Query('offset') offset?: number,
+    ) {
+        return this.transactionsService.findAllByHospital(hospitalId, status, paymentMethod, limit, offset);
     }
 
     @Get(':id')

@@ -9,10 +9,15 @@ import {
     ChevronRight,
     CheckCircle2,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    ShieldCheck,
+    Camera,
+    WifiOff
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { syncManager } from '../services/SyncManager';
+import { offlineStorage } from '../services/OfflineStorage';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -22,13 +27,15 @@ interface NewTransactionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    initialItem?: any;
 }
 
-const NewTransactionModal = ({ isOpen, onClose, onSuccess }: NewTransactionModalProps) => {
+const NewTransactionModal = ({ isOpen, onClose, onSuccess, initialItem }: NewTransactionModalProps) => {
     const { user } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isOfflineSaved, setIsOfflineSaved] = useState(false);
 
     // Data
     const [patients, setPatients] = useState<any[]>([]);
@@ -38,43 +45,98 @@ const NewTransactionModal = ({ isOpen, onClose, onSuccess }: NewTransactionModal
 
     // Selection
     const [selectedPatient, setSelectedPatient] = useState<any>(null);
-    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [selectedItem, setSelectedItem] = useState<any>(initialItem || null);
     const [paymentMethod, setPaymentMethod] = useState('cash');
+
+    // Phase A: Localization & Trust
+    const [insuranceProviders, setInsuranceProviders] = useState<any[]>([]);
+    const [isInsurance, setIsInsurance] = useState(false);
+    const [selectedInsurance, setSelectedInsurance] = useState<string>('');
+    const [authCode, setAuthCode] = useState('');
+    const [proofImageUrl, setProofImageUrl] = useState('');
 
     useEffect(() => {
         if (isOpen) {
+            setSelectedItem(initialItem || null);
+            setStep(1);
+            setIsOfflineSaved(false);
+
             const fetchData = async () => {
-                try {
-                    const [pRes, iRes] = await Promise.all([
-                        api.get(`/patients?hospitalId=${user?.hospitalId}`),
-                        api.get(`/revenue-items?hospitalId=${user?.hospitalId}`)
+                if (syncManager.isOnline()) {
+                    try {
+                        const [pRes, iRes, insRes] = await Promise.all([
+                            api.get(`/patients?hospitalId=${user?.hospitalId}`),
+                            api.get(`/revenue-items?hospitalId=${user?.hospitalId}`),
+                            api.get('/insurance-providers')
+                        ]);
+                        setPatients(pRes.data);
+                        setItems(iRes.data);
+                        setInsuranceProviders(insRes.data);
+
+                        // Update cache
+                        await offlineStorage.updateCache('patients', pRes.data);
+                        await offlineStorage.updateCache('revenue_items', iRes.data);
+                    } catch (err) {
+                        console.error('Failed to pre-fetch data, falling back to cache', err);
+                        const [pCache, iCache] = await Promise.all([
+                            offlineStorage.getAll('patients'),
+                            offlineStorage.getAll('revenue_items')
+                        ]);
+                        setPatients(pCache);
+                        setItems(iCache);
+                    }
+                } else {
+                    // Offline: load from cache directly
+                    const [pCache, iCache] = await Promise.all([
+                        offlineStorage.getAll('patients'),
+                        offlineStorage.getAll('revenue_items')
                     ]);
-                    setPatients(pRes.data);
-                    setItems(iRes.data);
-                } catch (err) {
-                    console.error('Failed to pre-fetch data', err);
+                    setPatients(pCache);
+                    setItems(iCache);
                 }
             };
             fetchData();
         }
-    }, [isOpen, user]);
+    }, [isOpen, user, initialItem]);
 
     const handleSubmit = async () => {
         setLoading(true);
         setError('');
+
+        const txData = {
+            hospitalId: user?.hospitalId,
+            patientId: selectedPatient.id,
+            revenueItemId: selectedItem.id,
+            amount: selectedItem.amount,
+            paymentMethod,
+            offlineId: crypto.randomUUID(),
+            insuranceProviderId: isInsurance ? selectedInsurance : undefined,
+            authCode: isInsurance ? authCode : undefined,
+            proofImageUrl: proofImageUrl || undefined
+        };
+
         try {
-            await api.post('/transactions', {
-                hospitalId: user?.hospitalId,
-                patientId: selectedPatient.id,
-                revenueItemId: selectedItem.id,
-                amount: selectedItem.amount,
-                paymentMethod,
-                offlineId: crypto.randomUUID()
-            });
-            onSuccess();
+            if (!syncManager.isOnline()) {
+                await syncManager.queueOffline('transaction', txData);
+                setIsOfflineSaved(true);
+                setStep(4);
+                onSuccess();
+                return;
+            }
+
+            await api.post('/transactions', txData);
+            setIsOfflineSaved(false);
             setStep(4);
+            onSuccess();
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Transaction failed. Please try again.');
+            if (!err.response && !syncManager.isOnline()) {
+                await syncManager.queueOffline('transaction', txData);
+                setIsOfflineSaved(true);
+                setStep(4);
+                onSuccess();
+            } else {
+                setError(err.response?.data?.message || 'Transaction failed. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -254,6 +316,75 @@ const NewTransactionModal = ({ isOpen, onClose, onSuccess }: NewTransactionModal
                                 </div>
                             </div>
 
+                            {/* Phase A: Insurance & Proofs */}
+                            <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
+                                <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-2xl border border-border">
+                                    <div className="flex items-center gap-3">
+                                        <ShieldCheck className="h-5 w-5 text-primary" />
+                                        <div>
+                                            <p className="text-sm font-bold">Insurance / NHIS</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Pay with HMO Plan</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsInsurance(!isInsurance)}
+                                        className={cn(
+                                            "w-12 h-6 rounded-full transition-all relative",
+                                            isInsurance ? "bg-primary" : "bg-muted"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                                            isInsurance ? "left-7" : "left-1"
+                                        )} />
+                                    </button>
+                                </div>
+
+                                {isInsurance && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Provider</label>
+                                            <select
+                                                value={selectedInsurance}
+                                                onChange={(e) => setSelectedInsurance(e.target.value)}
+                                                className="w-full p-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/10 outline-none text-sm font-bold"
+                                            >
+                                                <option value="">Select HMO/NHIS</option>
+                                                {insuranceProviders.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Auth Code</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. AUTH-9923"
+                                                value={authCode}
+                                                onChange={(e) => setAuthCode(e.target.value)}
+                                                className="w-full p-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/10 outline-none text-sm font-bold"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-2 px-1">Proof of Payment (Transfer/POS)</label>
+                                    <div className="relative group">
+                                        <input
+                                            type="text"
+                                            placeholder="Paste proof image URL or transaction ID..."
+                                            value={proofImageUrl}
+                                            onChange={(e) => setProofImageUrl(e.target.value)}
+                                            className="w-full p-4 bg-secondary/50 border-2 border-dashed border-border rounded-2xl focus:border-primary/50 transition-all outline-none text-sm font-bold"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                            <Camera className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="flex gap-4">
                                 <button
                                     onClick={() => setStep(2)}
@@ -274,11 +405,20 @@ const NewTransactionModal = ({ isOpen, onClose, onSuccess }: NewTransactionModal
 
                     {step === 4 && (
                         <div className="py-12 flex flex-col items-center text-center animate-in zoom-in duration-500">
-                            <div className="h-24 w-24 bg-emerald-500 rounded-full flex items-center justify-center text-white mb-8 shadow-xl shadow-emerald-500/20">
-                                <CheckCircle2 className="h-14 w-14" />
+                            <div className={cn(
+                                "h-24 w-24 rounded-full flex items-center justify-center text-white mb-8 shadow-xl",
+                                isOfflineSaved ? "bg-orange-500 shadow-orange-500/20" : "bg-emerald-500 shadow-emerald-500/20"
+                            )}>
+                                {isOfflineSaved ? <WifiOff className="h-14 w-14" /> : <CheckCircle2 className="h-14 w-14" />}
                             </div>
-                            <h3 className="text-3xl font-black text-foreground mb-4 tracking-tight">Receipt Generated!</h3>
-                            <p className="text-muted-foreground text-lg mb-10 max-w-xs">Transaction for <span className="text-foreground font-bold">{selectedPatient?.full_name}</span> has been confirmed.</p>
+                            <h3 className="text-3xl font-black text-foreground mb-4 tracking-tight">
+                                {isOfflineSaved ? 'Saved Offline' : 'Receipt Generated!'}
+                            </h3>
+                            <p className="text-muted-foreground text-lg mb-10 max-w-xs">
+                                {isOfflineSaved
+                                    ? `Transaction for ${selectedPatient?.full_name} saved locally. It will sync automatically when online.`
+                                    : `Transaction for ${selectedPatient?.full_name} has been confirmed.`}
+                            </p>
 
                             <div className="w-full space-y-3">
                                 <button
@@ -287,9 +427,11 @@ const NewTransactionModal = ({ isOpen, onClose, onSuccess }: NewTransactionModal
                                 >
                                     Back to Dashboard
                                 </button>
-                                <button className="w-full py-4 bg-secondary text-foreground font-bold rounded-2xl hover:bg-secondary/80 transition-all">
-                                    Print Thermal Receipt
-                                </button>
+                                {!isOfflineSaved && (
+                                    <button className="w-full py-4 bg-secondary text-foreground font-bold rounded-2xl hover:bg-secondary/80 transition-all">
+                                        Print Thermal Receipt
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}

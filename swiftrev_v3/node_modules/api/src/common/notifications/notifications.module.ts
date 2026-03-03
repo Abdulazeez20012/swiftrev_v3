@@ -1,10 +1,10 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { NotificationService } from './notification.service';
 import { ReceiptService } from './receipt.service';
-import { ReceiptProcessor } from './receipt.processor';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { BullModule } from '@nestjs/bullmq';
+import { ReceiptProcessor } from './receipt.processor';
 
 @Global()
 @Module({
@@ -16,6 +16,6 @@ import { SupabaseModule } from '../supabase/supabase.module';
         }),
     ],
     providers: [NotificationService, ReceiptService, ReceiptProcessor],
-    exports: [NotificationService, ReceiptService, ReceiptProcessor],
+    exports: [NotificationService, ReceiptService, BullModule],
 })
 export class NotificationsModule { }

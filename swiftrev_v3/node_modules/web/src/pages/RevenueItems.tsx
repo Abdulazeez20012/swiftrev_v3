@@ -8,30 +8,60 @@ import {
     Layers,
     AlertCircle,
     MoreVertical,
-    Zap
+    Zap,
+    WifiOff
 } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
+import AddRevenueItemModal from '../components/AddRevenueItemModal';
+import NewTransactionModal from '../components/NewTransactionModal';
+import { syncManager } from '../services/SyncManager';
+import { offlineStorage } from '../services/OfflineStorage';
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 const RevenueItems = () => {
     const { user } = useAuth();
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
 
-    useEffect(() => {
-        const fetchItems = async () => {
+    const fetchItems = async () => {
+        if (!user?.hospitalId) return;
+        setLoading(true);
+
+        if (syncManager.isOnline()) {
             try {
-                if (!user?.hospitalId) return;
                 const response = await api.get(`/revenue-items?hospitalId=${user.hospitalId}`);
                 setItems(response.data);
+                await offlineStorage.updateCache('revenue_items', response.data);
             } catch (error) {
-                console.error('Failed to fetch revenue items', error);
+                console.error('Failed to fetch revenue items, falling back to cache', error);
+                const cached = await offlineStorage.getAll('revenue_items');
+                setItems(cached);
             } finally {
                 setLoading(false);
             }
-        };
+        } else {
+            const cached = await offlineStorage.getAll('revenue_items');
+            setItems(cached);
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchItems();
     }, [user]);
+
+    const handleQuickSelect = (item: any) => {
+        setSelectedItem(item);
+        setIsTxModalOpen(true);
+    };
 
     const filteredItems = items.filter(item =>
         item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,12 +83,23 @@ const RevenueItems = () => {
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Services & Items</h1>
                     <p className="text-muted-foreground mt-1 text-lg">Manage billing items and service pricing for your hospital.</p>
                 </div>
-                {(user?.role === 'super_admin' || user?.role === 'hospital_admin') && (
-                    <button className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
-                        <Plus className="h-4 w-4" />
-                        Add New Item
-                    </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {!syncManager.isOnline() && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                            <WifiOff className="h-4 w-4 text-orange-500" />
+                            <span className="text-xs font-bold text-orange-500 uppercase">Offline</span>
+                        </div>
+                    )}
+                    {(user?.role === 'super_admin' || user?.role === 'hospital_admin') && (
+                        <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add New Item
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="relative group max-w-md">
@@ -66,7 +107,7 @@ const RevenueItems = () => {
                 <input
                     type="text"
                     placeholder="Search services or departments..."
-                    className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -104,7 +145,10 @@ const RevenueItems = () => {
                             </div>
                         </div>
 
-                        <button className="w-full mt-6 py-2 bg-secondary text-foreground text-xs font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all flex items-center justify-center gap-2">
+                        <button
+                            onClick={() => handleQuickSelect(item)}
+                            className="w-full mt-6 py-2 bg-secondary text-foreground text-xs font-bold rounded-xl border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all flex items-center justify-center gap-2"
+                        >
                             <Zap className="h-3 w-3" />
                             Quick Select
                         </button>
@@ -119,6 +163,19 @@ const RevenueItems = () => {
                     </div>
                 )}
             </div>
+
+            <AddRevenueItemModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onSuccess={() => fetchItems()}
+            />
+
+            <NewTransactionModal
+                isOpen={isTxModalOpen}
+                onClose={() => setIsTxModalOpen(false)}
+                onSuccess={() => { }} // Dashboard will refresh on next visit
+                initialItem={selectedItem}
+            />
         </div>
     );
 };

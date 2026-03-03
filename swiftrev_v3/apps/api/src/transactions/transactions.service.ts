@@ -1,9 +1,10 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { MlService } from '../common/ml/ml.service';
 
 @Injectable()
 export class TransactionsService {
@@ -11,8 +12,8 @@ export class TransactionsService {
 
     constructor(
         private supabaseService: SupabaseService,
-        @InjectQueue('receipt-queue') private receiptQueue: Queue,
-        @InjectQueue('ml-queue') private mlQueue: Queue,
+        private mlService: MlService,
+        @InjectQueue('receipt-queue') private readonly receiptQueue: Queue,
     ) { }
 
     async create(createTransactionDto: CreateTransactionDto, createdBy: string) {
@@ -37,15 +38,18 @@ export class TransactionsService {
             .from('transactions')
             .insert([{
                 hospital_id: createTransactionDto.hospitalId,
-                agent_id: createdBy, // Fixed: use agent_id from schema
-                payer_id: createTransactionDto.patientId, // Fixed: use payer_id from schema
+                agent_id: createdBy,
+                payer_id: createTransactionDto.patientId,
                 revenue_item_id: createTransactionDto.revenueItemId,
                 amount: createTransactionDto.amount,
                 payment_method: createTransactionDto.paymentMethod,
-                client_transaction_id: createTransactionDto.offlineId || uuidv4(), // Fixed: use client_transaction_id
+                client_transaction_id: createTransactionDto.offlineId || uuidv4(),
+                insurance_provider_id: createTransactionDto.insuranceProviderId,
+                auth_code: createTransactionDto.authCode,
+                proof_image_url: createTransactionDto.proofImageUrl,
                 status: 'completed',
             }])
-            .select('*, payers(name, email), revenue_items(name), hospitals(name)')
+            .select('*, patients(full_name, email, insurance_number), insurance_providers(name), revenue_items(name), hospitals(name)')
             .single();
 
         if (txError) {
@@ -63,34 +67,55 @@ export class TransactionsService {
             this.logger.error(`Failed to update wallet for hospital ${createTransactionDto.hospitalId}: ${walletError.message}`);
         }
 
-        // 4. Trigger Receipt Generation Job
-        await this.receiptQueue.add('generate-receipt', {
-            transactionId: transaction.id,
-            transaction,
+        // 4. Trigger Fraud Detection (Async)
+        this.mlService.checkFraud(transaction).catch(err => {
+            this.logger.error(`Async fraud check failed for transaction ${transaction.id}: ${err.message}`);
         });
 
-        // 5. Trigger Fraud Detection Job
-        await this.mlQueue.add('detect-fraud', {
+        // 5. Trigger Receipt Generation (Async Queue)
+        this.receiptQueue.add('generate-receipt', {
             transactionId: transaction.id,
             transaction,
+        }).catch(err => {
+            this.logger.error(`Failed to queue receipt for transaction ${transaction.id}: ${err.message}`);
         });
+
+        this.logger.log(`Transaction ${transaction.id} created, fraud check and receipt generation triggered.`);
 
         return transaction;
     }
 
-    async findAllByHospital(hospitalId: string) {
+    async findAllByHospital(
+        hospitalId: string,
+        status?: string,
+        paymentMethod?: string,
+        limit: number = 20,
+        offset: number = 0
+    ) {
         const supabase = this.supabaseService.getClient();
-        const { data, error } = await supabase
+        let query = supabase
             .from('transactions')
-            .select('*, patients(full_name), revenue_items(name), users(email)')
+            .select('*, patients(full_name), revenue_items(name), users(email), insurance_providers(name), ml_predictions!entity_id(*)', { count: 'exact' })
             .eq('hospital_id', hospitalId)
-            .order('created_at', { ascending: false });
+            .eq('ml_predictions.prediction_type', 'fraud_score');
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        if (paymentMethod) {
+            query = query.eq('payment_method', paymentMethod);
+        }
+
+        const { data, error, count } = await query
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
 
         if (error) {
             throw new BadRequestException(error.message);
         }
 
-        return data;
+        return { data, count };
     }
 
     async findOne(id: string) {

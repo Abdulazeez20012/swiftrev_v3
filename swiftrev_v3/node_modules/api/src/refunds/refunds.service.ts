@@ -1,17 +1,16 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { AuditService } from '../common/audit/audit.service';
 
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 
 @Injectable()
 export class RefundsService {
+    private readonly logger = new Logger(RefundsService.name);
+
     constructor(
         private supabaseService: SupabaseService,
         private auditService: AuditService,
-        @InjectQueue('receipt-queue') private receiptQueue: Queue,
     ) { }
 
     async create(createRefundDto: CreateRefundDto, userId: string) {
@@ -105,25 +104,8 @@ export class RefundsService {
             { refundId: id }
         );
 
-        // 5. Trigger Notification for Refund
-        await supabase
-            .from('transactions')
-            .select('*, patients(full_name, email), hospitals(name)')
-            .eq('id', refund.transaction_id)
-            .single()
-            .then(async ({ data: tx }) => {
-                if (tx?.patients?.email) {
-                    // Reuse the receipt-queue for email notifications
-                    const queue = (this as any).receiptQueue; // I need to inject it
-                    if (queue) {
-                        await queue.add('send-refund-email', {
-                            to: tx.patients.email,
-                            transaction: tx,
-                            refundAmount: refund.amount,
-                        });
-                    }
-                }
-            });
+        // Refund email notification skipped (Redis/queue not available).
+        this.logger.warn(`Refund ${id} approved. Email notification skipped (Redis unavailable).`);
 
         return { message: 'Refund approved and wallet updated' };
     }

@@ -68,11 +68,18 @@ export class ReceiptProcessor extends WorkerHost {
 
                 // 5. Trigger Email Job
                 if (transaction.patients?.email) {
-                    // Add to the same queue but as a different job
                     await this.receiptQueue.add('send-receipt-email', {
                         to: transaction.patients.email,
                         transaction,
                         pdfBuffer: pdfBuffer.toString('base64'),
+                    });
+                }
+
+                // 6. Trigger SMS Job
+                if (transaction.patients?.phone) {
+                    await this.receiptQueue.add('send-receipt-sms', {
+                        to: transaction.patients.phone,
+                        transaction,
                     });
                 }
                 break;
@@ -103,6 +110,12 @@ export class ReceiptProcessor extends WorkerHost {
                         },
                     ],
                 );
+                break;
+
+            case 'send-receipt-sms':
+                this.logger.log(`Sending receipt SMS to ${job.data.to}...`);
+                const smsMessage = `Receipt from ${transaction.hospitals?.name}: ₦${transaction.amount.toLocaleString()} paid. Ref: ${transaction.id.split('-')[0].toUpperCase()}. View: ${transaction.receipt_url}`;
+                await this.notificationService.sendSms(job.data.to, smsMessage);
                 break;
 
             case 'send-refund-email':

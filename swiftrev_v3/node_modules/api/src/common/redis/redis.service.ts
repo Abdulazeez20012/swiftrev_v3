@@ -5,7 +5,8 @@ import Redis from 'ioredis';
 @Injectable()
 export class RedisService {
     private readonly logger = new Logger(RedisService.name);
-    private clientInstance: Redis;
+    private clientInstance: Redis | null = null;
+    private redisAvailable = false;
 
     constructor(private configService: ConfigService) { }
 
@@ -22,34 +23,51 @@ export class RedisService {
             host,
             port,
             password,
+            enableOfflineQueue: false,
+            lazyConnect: false,
             retryStrategy: (times) => {
-                const delay = Math.min(times * 50, 2000);
-                return delay;
+                if (times >= 5) {
+                    this.logger.warn('Redis unavailable after 5 attempts. Disabling Redis.');
+                    return null; // Stop retrying
+                }
+                return Math.min(times * 100, 2000);
             },
         });
 
-        this.clientInstance.on('connect', () => this.logger.log('Redis connected'));
-        this.clientInstance.on('error', (err) => this.logger.error('Redis error', err));
+        this.clientInstance.on('connect', () => {
+            this.redisAvailable = true;
+            this.logger.log('Redis connected');
+        });
+        this.clientInstance.on('error', () => { this.redisAvailable = false; }); // Suppress stack trace flood
 
         return this.clientInstance;
     }
 
     async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-        const client = this.getClient();
-        if (ttlSeconds) {
-            await client.set(key, value, 'EX', ttlSeconds);
-        } else {
-            await client.set(key, value);
-        }
+        try {
+            const client = this.getClient();
+            if (!client || !this.redisAvailable) return;
+            if (ttlSeconds) {
+                await client.set(key, value, 'EX', ttlSeconds);
+            } else {
+                await client.set(key, value);
+            }
+        } catch { /* Redis unavailable, silently skip */ }
     }
 
     async get(key: string): Promise<string | null> {
-        const client = this.getClient();
-        return client.get(key);
+        try {
+            const client = this.getClient();
+            if (!client || !this.redisAvailable) return null;
+            return client.get(key);
+        } catch { return null; }
     }
 
     async del(key: string): Promise<void> {
-        const client = this.getClient();
-        await client.del(key);
+        try {
+            const client = this.getClient();
+            if (!client || !this.redisAvailable) return;
+            await client.del(key);
+        } catch { /* Redis unavailable, silently skip */ }
     }
 }

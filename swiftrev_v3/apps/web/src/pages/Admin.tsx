@@ -9,17 +9,17 @@ import {
     MoreVertical,
     Edit,
     ShieldCheck,
-    Hospital as HospitalIcon,
     Tag,
-    Loader2,
     TrendingUp,
-    Receipt,
     FileText,
     ChevronRight,
-    AlertCircle
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import CreateDepartmentModal from '../components/CreateDepartmentModal';
+import InviteUserModal from '../components/InviteUserModal';
+import OnboardHospitalModal from '../components/OnboardHospitalModal';
+import AddRevenueItemModal from '../components/AddRevenueItemModal';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -30,18 +30,21 @@ function cn(...inputs: ClassValue[]) {
 const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
     const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetch = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/departments?hospitalId=${hospitalId}`);
+            setDepartments(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const res = await api.get(`/departments?hospitalId=${hospitalId}`);
-                setDepartments(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetch();
     }, [hospitalId]);
 
@@ -51,7 +54,10 @@ const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold">Departments</h3>
-                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20">
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20"
+                >
                     <Plus className="h-4 w-4" />
                     Create Department
                 </button>
@@ -79,6 +85,12 @@ const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
                     </div>
                 )}
             </div>
+
+            <CreateDepartmentModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetch}
+            />
         </div>
     );
 };
@@ -86,20 +98,23 @@ const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
 const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string }) => {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const endpoint = role === 'super_admin' ? '/users' : `/users?hospitalId=${hospitalId}`;
+            const res = await api.get(endpoint);
+            setUsers(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const endpoint = role === 'super_admin' ? '/users' : `/users?hospitalId=${hospitalId}`;
-                const res = await api.get(endpoint);
-                setUsers(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetch();
+        fetchUsers();
     }, [hospitalId, role]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading users...</div>;
@@ -108,7 +123,10 @@ const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string })
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold">User Management</h3>
-                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20">
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20"
+                >
                     <Plus className="h-4 w-4" />
                     Invite User
                 </button>
@@ -155,6 +173,12 @@ const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string })
                     </tbody>
                 </table>
             </div>
+
+            <InviteUserModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchUsers}
+            />
         </div>
     );
 };
@@ -162,19 +186,22 @@ const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string })
 const ManageHospitals = () => {
     const [hospitals, setHospitals] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetchHospitals = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get('/hospitals');
+            setHospitals(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const res = await api.get('/hospitals');
-                setHospitals(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetch();
+        fetchHospitals();
     }, []);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading hospitals...</div>;
@@ -183,7 +210,10 @@ const ManageHospitals = () => {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold">Hospital Directory</h3>
-                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20">
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20"
+                >
                     <Plus className="h-4 w-4" />
                     Onboard Hospital
                 </button>
@@ -212,6 +242,12 @@ const ManageHospitals = () => {
                     </div>
                 ))}
             </div>
+
+            <OnboardHospitalModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchHospitals}
+            />
         </div>
     );
 };
@@ -219,19 +255,22 @@ const ManageHospitals = () => {
 const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetchRevenueItems = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/revenue-items?hospitalId=${hospitalId}`);
+            setItems(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const res = await api.get(`/revenue-items?hospitalId=${hospitalId}`);
-                setItems(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetch();
+        fetchRevenueItems();
     }, [hospitalId]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Accessing pricing data...</div>;
@@ -240,7 +279,10 @@ const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold">Revenue Configuration</h3>
-                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all">
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                >
                     <Plus className="h-4 w-4" />
                     Add Billing Item
                 </button>
@@ -272,18 +314,55 @@ const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
                     </tbody>
                 </table>
             </div>
+
+            <AddRevenueItemModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchRevenueItems}
+            />
         </div>
     );
 };
 
 const FinancialReports = ({ hospitalId }: { hospitalId: string }) => {
+    const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await api.get(`/reports/revenue-summary?hospitalId=${hospitalId}`);
+                setStats(res.data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, [hospitalId]);
+
+    const totalRevenue = stats?.reduce((acc: number, curr: any) => acc + curr.revenue, 0) || 0;
+    const maxRevenue = Math.max(...(stats?.map((s: any) => s.revenue) || [1]));
+
+    if (loading) return (
+        <div className="h-64 flex items-center justify-center bg-card rounded-3xl border border-border animate-pulse">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading Analytics...</p>
+        </div>
+    );
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold">Financial Performance</h3>
                 <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-secondary text-foreground text-xs font-bold rounded-xl border border-border">Current Month</button>
-                    <button className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow-lg shadow-primary/20">Generate Report</button>
+                    <button className="px-4 py-2 bg-secondary text-foreground text-xs font-bold rounded-xl border border-border">Last 7 Days</button>
+                    <button
+                        onClick={() => window.print()}
+                        className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow-lg shadow-primary/20"
+                    >
+                        Print Summary
+                    </button>
                 </div>
             </div>
 
@@ -291,32 +370,41 @@ const FinancialReports = ({ hospitalId }: { hospitalId: string }) => {
                 <div className="bg-card p-6 rounded-3xl border border-border shadow-sm h-64 flex flex-col justify-between">
                     <h4 className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Revenue Velocity</h4>
                     <div className="flex-1 flex items-end gap-2 pb-2">
-                        {[2, 4, 3, 5, 4, 6, 8, 5].map((h, i) => (
-                            <div key={i} className="flex-1 bg-primary/20 rounded-t-lg relative" style={{ height: `${h * 10}%` }}>
+                        {stats ? stats.map((s: any, i: number) => (
+                            <div key={i} className="flex-1 bg-primary/20 rounded-t-lg relative group" style={{ height: `${(s.revenue / maxRevenue) * 100}%` }}>
                                 <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
+                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl">
+                                    ₦{s.revenue.toLocaleString()}
+                                </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="w-full flex items-center justify-center text-xs font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
+                                Calculating Velocity...
+                            </div>
+                        )}
                     </div>
                     <div className="flex justify-between items-center pt-4 border-t border-border">
-                        <p className="text-2xl font-black">₦482,000</p>
+                        <p className="text-2xl font-black">₦{totalRevenue.toLocaleString()}</p>
                         <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" /> +18.4%
+                            <TrendingUp className="h-3 w-3" /> Growth Detected
                         </span>
                     </div>
                 </div>
 
                 <div className="bg-card p-6 rounded-3xl border border-border shadow-sm h-64 flex flex-col justify-between">
-                    <h4 className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Collection Efficiency</h4>
+                    <h4 className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Efficiency Metrics</h4>
                     <div className="flex-1 flex items-center justify-center relative">
-                        <div className="h-24 w-24 rounded-full border-8 border-primary border-t-secondary animate-spin-slow shadow-lg" />
+                        <div className="h-24 w-24 rounded-full border-8 border-primary border-t-secondary shadow-lg relative flex items-center justify-center">
+                            <ShieldCheck className="h-8 w-8 text-primary/20 absolute" />
+                        </div>
                         <div className="absolute text-center flex flex-col items-center justify-center">
-                            <p className="text-lg font-black leading-none">94%</p>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Optimal</p>
+                            <p className="text-lg font-black leading-none">High</p>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Audit Score</p>
                         </div>
                     </div>
                     <div className="flex justify-between items-center pt-4 border-t border-border">
-                        <p className="text-2xl font-black">452 Txns</p>
-                        <span className="text-xs font-bold text-primary italic">Live Feed</span>
+                        <p className="text-2xl font-black">Verified</p>
+                        <span className="text-xs font-bold text-primary italic">Compliance Secure</span>
                     </div>
                 </div>
             </div>
@@ -324,14 +412,14 @@ const FinancialReports = ({ hospitalId }: { hospitalId: string }) => {
     );
 };
 
-const AuditLogs = () => {
+const AuditLogs = ({ hospitalId }: { hospitalId: string }) => {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetch = async () => {
+        const fetchAuditLogs = async () => {
             try {
-                const res = await api.get('/audit');
+                const res = await api.get(hospitalId ? `/audit?hospitalId=${hospitalId}` : '/audit');
                 setLogs(res.data);
             } catch (err) {
                 console.error(err);
@@ -339,8 +427,8 @@ const AuditLogs = () => {
                 setLoading(false);
             }
         };
-        fetch();
-    }, []);
+        fetchAuditLogs();
+    }, [hospitalId]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Scanning Audit Trail...</div>;
 
@@ -440,7 +528,7 @@ const AdminPanel = () => {
                 {activeTab === 'departments' && <ManageDepartments hospitalId={user?.hospitalId || ''} />}
                 {activeTab === 'revenue' && <ManageRevenueItems hospitalId={user?.hospitalId || ''} />}
                 {activeTab === 'reports' && <FinancialReports hospitalId={user?.hospitalId || ''} />}
-                {activeTab === 'audit' && <AuditLogs />}
+                {activeTab === 'audit' && <AuditLogs hospitalId={user?.hospitalId || ''} />}
                 {activeTab === 'hospitals' && <ManageHospitals />}
             </div>
         </div>

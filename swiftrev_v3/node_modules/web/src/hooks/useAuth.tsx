@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../services/api';
 
 interface User {
@@ -15,6 +15,7 @@ interface AuthContextType {
     logout: () => void;
     isAuthenticated: boolean;
     hasPermission: (permission: string) => boolean;
+    switchHospital: (hospitalId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,11 +61,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const hasPermission = (permission: string) => {
-        // Basic implementation - can be enhanced with granular permission labels
+    const hasPermission = (_permission: string) => {
         if (!user) return false;
         if (user.role === 'super_admin') return true;
-        return true; // Simplified for now
+        return true;
+    };
+
+    const switchHospital = (hospitalId: string) => {
+        if (!user) return;
+        const updatedUser = { ...user, hospitalId };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        window.location.reload();
     };
 
     return (
@@ -74,7 +82,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             login,
             logout,
             isAuthenticated: !!user,
-            hasPermission
+            hasPermission,
+            switchHospital
         }}>
             {children}
         </AuthContext.Provider>

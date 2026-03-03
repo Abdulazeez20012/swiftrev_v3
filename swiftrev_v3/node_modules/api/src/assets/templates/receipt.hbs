@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            margin: 40px;
+        }
+
+        .receipt-container {
+            border: 2px solid #eee;
+            padding: 40px;
+            max-width: 600px;
+            margin: auto;
+            border-radius: 12px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #7c3aed;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .hospital-name {
+            color: #7c3aed;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .receipt-title {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .value {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .amount-section {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: right;
+        }
+
+        .total-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .total-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #111;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 10px;
+            color: #aaa;
+            border-top: 1px solid #eee;
+            pt: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="receipt-container">
+        <div class="header">
+            <h1 class="hospital-name">{{hospitalName}}</h1>
+            <p class="receipt-title">Official Medical Receipt</p>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <p class="label">Date</p>
+                <p class="value">{{date}}</p>
+            </div>
+            <div class="col" style="text-align: right;">
+                <p class="label">Receipt #</p>
+                <p class="value">{{id}}</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <p class="label">Patient Name</p>
+                <p class="value">{{patientName}}</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; border-top: 1px dashed #eee; padding-top: 20px;">
+            <div class="row">
+                <span class="value">{{revenueItemName}}</span>
+                <span class="value">₦{{amount}}</span>
+            </div>
+            <p class="label" style="margin-top: -10px;">{{departmentName}}</p>
+        </div>
+
+        <div class="amount-section">
+            <p class="total-label">Total Amount Paid</p>
+            <p class="total-value">₦{{amount}}</p>
+            <p class="label">Payment Method: {{paymentMethod}}</p>
+        </div>
+
+        <div class="footer">
+            <p>This is a computer-generated document. No signature required.</p>
+            <p>Securely verified by SwiftRev HERMS Nigeria.</p>
+        </div>
+    </div>
+</body>
+
+</html>

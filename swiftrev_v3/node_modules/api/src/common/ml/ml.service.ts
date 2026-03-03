@@ -25,6 +25,8 @@ export class MlService {
                     payment_method: transaction.payment_method,
                     patient_id: transaction.patient_id,
                     hospital_id: transaction.hospital_id,
+                    revenue_item_id: transaction.revenue_item_id,
+                    auth_code: transaction.auth_code,
                     created_at: transaction.created_at,
                 }),
             ) as any;
@@ -37,7 +39,12 @@ export class MlService {
                 hospital_id: transaction.hospital_id,
                 prediction_type: 'fraud_score',
                 entity_id: transaction.id,
-                prediction_value: prediction,
+                prediction_value: {
+                    is_anomaly: prediction.is_anomaly,
+                    alert_type: prediction.alert_type,
+                    reason: prediction.reason,
+                    features: prediction.features_used
+                },
                 confidence_score: prediction.confidence_score,
             });
 

@@ -1,6 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { TransactionsService } from '../transactions/transactions.service';
 import { SyncTransactionsDto } from './dto/sync-transactions.dto';
 
@@ -10,13 +8,15 @@ export class SyncService {
 
     constructor(
         private transactionsService: TransactionsService,
-        @InjectQueue('sync-queue') private syncQueue: Queue,
     ) { }
 
     async syncTransactions(syncDto: SyncTransactionsDto, userId: string) {
         this.logger.log(`Starting sync for hospital ${syncDto.hospitalId} with ${syncDto.transactions.length} items`);
 
-        const results = {
+        const results: {
+            success: { offlineId: string | undefined; id: any }[];
+            failed: { offlineId: string | undefined; error: any }[];
+        } = {
             success: [],
             failed: [],
         };
@@ -33,12 +33,8 @@ export class SyncService {
             }
         }
 
-        // Add sync completion job to queue for any post-sync processing (e.g., receipt generation)
-        await this.syncQueue.add('process-synced-batch', {
-            hospitalId: syncDto.hospitalId,
-            userId,
-            batchSize: results.success.length,
-        });
+        // Queue-based post-processing disabled (Redis unavailable); log batch completion instead.
+        this.logger.log(`Sync batch completed for hospital ${syncDto.hospitalId}: ${results.success.length} success, ${results.failed.length} failed.`);
 
         return results;
     }

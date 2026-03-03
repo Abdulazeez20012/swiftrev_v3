@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import {
     Activity,
@@ -13,7 +14,9 @@ import {
     ChevronRight,
     TrendingUp,
     CreditCard,
-    Tag
+    Tag,
+    ShieldCheck,
+    ShieldAlert
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -38,15 +41,43 @@ const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any,
     </Link>
 );
 
+import { syncManager } from '../services/SyncManager';
+
 const MainLayout = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, switchHospital } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [hospitals, setHospitals] = useState<any[]>([]);
+    const [syncStatus, setSyncStatus] = useState<'online' | 'offline' | 'syncing'>('online');
+    const [pendingCount, setPendingCount] = useState(0);
+
+    useEffect(() => {
+        syncManager.addListener((status, count) => {
+            setSyncStatus(status);
+            setPendingCount(count);
+        });
+
+        if (user?.role === 'super_admin') {
+            const fetchHospitals = async () => {
+                try {
+                    const response = await api.get('/hospitals');
+                    setHospitals(response.data);
+                } catch (error) {
+                    console.error('Failed to fetch hospitals', error);
+                }
+            };
+            fetchHospitals();
+        }
+    }, [user]);
+
+    const currentHospitalName = hospitals.find(h => h.id === user?.hospitalId)?.name || "St. Joseph's Medical Center";
 
     const menuItems = [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/transactions', label: 'Transactions', icon: Receipt },
+        { to: '/claims', label: 'NHIS Claims', icon: ShieldCheck },
+        { to: '/security', label: 'Security & Alerts', icon: ShieldAlert },
         { to: '/patients', label: 'Patients', icon: Users },
         { to: '/revenue-items', label: 'Services & Items', icon: Tag },
         { to: '/wallet', label: 'Hospital Wallet', icon: CreditCard },
@@ -133,23 +164,55 @@ const MainLayout = () => {
 
                     <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
                         <Hospital className="h-4 w-4" />
-                        <span className="font-medium">St. Joseph's Medical Center</span>
+                        {user?.role === 'super_admin' ? (
+                            <select
+                                className="bg-transparent text-foreground font-bold border-none focus:ring-0 cursor-pointer hover:text-primary transition-colors text-sm"
+                                value={user?.hospitalId}
+                                onChange={(e) => switchHospital(e.target.value)}
+                            >
+                                {hospitals.map(h => (
+                                    <option key={h.id} value={h.id} className="bg-card text-foreground">{h.name}</option>
+                                ))}
+                                {hospitals.length === 0 && <option>{currentHospitalName}</option>}
+                            </select>
+                        ) : (
+                            <span className="font-medium text-foreground">{currentHospitalName}</span>
+                        )}
                         <ChevronRight className="h-4 w-4" />
                         <span className="text-foreground font-bold">{menuItems.find(i => i.to === location.pathname)?.label || 'Overview'}</span>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <div className="hidden sm:flex flex-col items-end">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sync Status</span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Status'}
+                            </span>
                             <div className="flex items-center gap-1.5">
-                                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                <span className="text-xs font-bold text-foreground">Online</span>
+                                <div className={cn(
+                                    "h-2 w-2 rounded-full animate-pulse",
+                                    syncStatus === 'online' && "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]",
+                                    syncStatus === 'offline' && "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]",
+                                    syncStatus === 'syncing' && "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                )} />
+                                <span className="text-xs font-bold text-foreground">
+                                    {syncStatus === 'online' ? 'Online' : syncStatus === 'offline' ? 'Offline' : 'Syncing'}
+                                    {pendingCount > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({pendingCount} pending)</span>}
+                                </span>
                             </div>
                         </div>
                         <div className="h-8 w-px bg-border hidden sm:block mx-1" />
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full border border-primary/20">
-                            <TrendingUp className="h-4 w-4 text-primary" />
-                            <span className="text-xs font-bold text-primary">Live Updates</span>
+                            {syncStatus === 'offline' ? (
+                                <>
+                                    <Activity className="h-4 w-4 text-orange-500" />
+                                    <span className="text-xs font-bold text-orange-500">Field Mode</span>
+                                </>
+                            ) : (
+                                <>
+                                    <TrendingUp className="h-4 w-4 text-primary" />
+                                    <span className="text-xs font-bold text-primary">Live Updates</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </header>

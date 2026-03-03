@@ -23,6 +23,12 @@ api.interceptors.response.use(
             localStorage.removeItem('user');
             window.location.href = '/login';
         }
+
+        // Handle network errors (no response)
+        if (!error.response) {
+            console.warn('Network error detected. Application may be offline.');
+        }
+
         return Promise.reject(error);
     }
 );

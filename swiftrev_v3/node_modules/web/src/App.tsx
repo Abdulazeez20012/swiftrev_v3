@@ -8,6 +8,8 @@ import Transactions from './pages/Transactions';
 import Patients from './pages/Patients';
 import RevenueItems from './pages/RevenueItems';
 import AdminPanel from './pages/Admin';
+import ClaimsDashboard from './pages/ClaimsDashboard';
+import SecurityDashboard from './pages/SecurityDashboard';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center h-full opacity-40 space-y-4">
@@ -35,6 +37,8 @@ const App = () => {
             <Route path="transactions" element={<Transactions />} />
             <Route path="patients" element={<Patients />} />
             <Route path="revenue-items" element={<RevenueItems />} />
+            <Route path="claims" element={<ClaimsDashboard />} />
+            <Route path="security" element={<SecurityDashboard />} />
             <Route path="wallet" element={<PlaceholderPage title="Hospital Wallet" />} />
             <Route path="admin" element={<AdminPanel />} />
           </Route>

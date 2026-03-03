@@ -8,11 +8,10 @@ import type {
     RevenueItem,
     Transaction,
     HospitalWallet,
-    AuditLog,
-    DataResponse
+    AuditLog
 } from '../types';
 
-import { NotificationService } from '../NotificationService';
+
 
 export class DataService {
     private static instance: DataService;
@@ -25,8 +24,6 @@ export class DataService {
     private walletRepo: BaseRepository<HospitalWallet>;
     private auditLogRepo: BaseRepository<AuditLog>;
 
-    private notificationService: NotificationService;
-
     private constructor(storage: IStorage) {
         this.hospitalRepo = new LocalRepository<Hospital>(storage, 'hospitals');
         this.departmentRepo = new LocalRepository<Department>(storage, 'departments');
@@ -34,8 +31,6 @@ export class DataService {
         this.transactionRepo = new LocalRepository<Transaction>(storage, 'transactions');
         this.walletRepo = new LocalRepository<HospitalWallet>(storage, 'hospital_wallets');
         this.auditLogRepo = new LocalRepository<AuditLog>(storage, 'audit_logs');
-
-        this.notificationService = NotificationService.getInstance();
     }
 
     public static getInstance(storage: IStorage): DataService {
@@ -56,7 +51,7 @@ export class DataService {
     /**
      * Core Transaction Logic: Credit Wallet
      */
-    public async creditHospitalWallet(hospitalId: string, amount: number, sourceRef: string, description: string) {
+    public async creditHospitalWallet(hospitalId: string, amount: number, _sourceRef: string, _description: string) {
         try {
             // 1. Get or Create Wallet
             const allWallets = await this.walletRepo.getAll();
