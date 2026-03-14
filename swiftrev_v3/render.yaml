@@ -1,3 +1,4 @@
+renderVersion: "1"
 services:
   # 1. NestJS API Backend
   - type: web
