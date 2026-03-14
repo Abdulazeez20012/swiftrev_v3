@@ -1,0 +1,53 @@
+services:
+  # 1. NestJS API Backend
+  - type: web
+    name: swiftrev-api
+    env: docker
+    dockerfilePath: apps/api/Dockerfile
+    repo: https://github.com/Abdulazeez20012/swiftrev_v3
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: swiftrev-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: swiftrev-redis
+          property: port
+      - key: ML_SERVICE_URL
+        fromService:
+          type: web
+          name: swiftrev-ai
+          property: url
+
+  # 2. Python AI Service
+  - type: web
+    name: swiftrev-ai
+    env: docker
+    rootDir: apps/ai-service
+    dockerfilePath: Dockerfile
+    repo: https://github.com/Abdulazeez20012/swiftrev_v3
+    envVars:
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: swiftrev-redis
+          property: host
+      - key: PYTHONUNBUFFERED
+        value: 1
+
+  # 3. Redis Instance for Job Queues
+  - type: redis
+    name: swiftrev-redis
+    ipAllowList: [] # Only allow internal connections from other Render services
+    plan: free # Change to starter if free is unavailable
