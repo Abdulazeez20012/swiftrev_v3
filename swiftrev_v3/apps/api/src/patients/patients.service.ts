@@ -21,6 +21,7 @@ export class PatientsService {
                 gender: createPatientDto.gender,
                 insurance_number: createPatientDto.insuranceNumber,
                 onboarded_by: createPatientDto.onboardedBy,
+                patient_type: createPatientDto.patientType || 'regular',
             }])
             .select()
             .single();
@@ -74,6 +75,7 @@ export class PatientsService {
                 date_of_birth: updatePatientDto.dateOfBirth,
                 gender: updatePatientDto.gender,
                 insurance_number: updatePatientDto.insuranceNumber,
+                patient_type: updatePatientDto.patientType,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', id)

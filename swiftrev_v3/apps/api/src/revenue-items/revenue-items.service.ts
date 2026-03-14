@@ -17,6 +17,8 @@ export class RevenueItemsService {
                 name: createRevenueItemDto.name,
                 description: createRevenueItemDto.description,
                 amount: createRevenueItemDto.amount,
+                payment_type: createRevenueItemDto.paymentType || 'cash',
+                nhis_amount: createRevenueItemDto.nhisAmount ?? null,
             }])
             .select()
             .single();
@@ -28,12 +30,18 @@ export class RevenueItemsService {
         return data;
     }
 
-    async findAllByHospital(hospitalId: string) {
+    async findAllByHospital(hospitalId: string, departmentId?: string) {
         const supabase = this.supabaseService.getClient();
-        const { data, error } = await supabase
+        let query = supabase
             .from('revenue_items')
             .select('*, departments(name)')
             .eq('hospital_id', hospitalId);
+
+        if (departmentId) {
+            query = query.eq('department_id', departmentId);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             throw new BadRequestException(error.message);
@@ -59,15 +67,24 @@ export class RevenueItemsService {
 
     async update(id: string, updateRevenueItemDto: UpdateRevenueItemDto) {
         const supabase = this.supabaseService.getClient();
+        const updatePayload: Record<string, any> = {
+            department_id: updateRevenueItemDto.departmentId,
+            name: updateRevenueItemDto.name,
+            description: updateRevenueItemDto.description,
+            amount: updateRevenueItemDto.amount,
+            updated_at: new Date().toISOString(),
+        };
+
+        if (updateRevenueItemDto.paymentType !== undefined) {
+            updatePayload.payment_type = updateRevenueItemDto.paymentType;
+        }
+        if (updateRevenueItemDto.nhisAmount !== undefined) {
+            updatePayload.nhis_amount = updateRevenueItemDto.nhisAmount;
+        }
+
         const { data, error } = await supabase
             .from('revenue_items')
-            .update({
-                department_id: updateRevenueItemDto.departmentId,
-                name: updateRevenueItemDto.name,
-                description: updateRevenueItemDto.description,
-                amount: updateRevenueItemDto.amount,
-                updated_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq('id', id)
             .select()
             .single();

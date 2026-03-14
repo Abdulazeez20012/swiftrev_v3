@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, IsOptional, IsUUID, IsNumber, Min } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsUUID, IsNumber, IsEnum, Min } from 'class-validator';
+
+export enum PaymentType {
+    CASH = 'cash',
+    NHIS = 'nhis',
+    CAPITATION = 'capitation',
+    RETAINERSHIP = 'retainership',
+}
 
 export class CreateRevenueItemDto {
     @IsUUID()
@@ -20,4 +27,13 @@ export class CreateRevenueItemDto {
     @IsNumber()
     @Min(0)
     amount: number;
+
+    @IsEnum(PaymentType)
+    @IsOptional()
+    paymentType?: PaymentType;
+
+    @IsNumber()
+    @Min(0)
+    @IsOptional()
+    nhisAmount?: number;
 }

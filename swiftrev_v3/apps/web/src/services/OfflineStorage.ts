@@ -11,6 +11,18 @@ export interface SyncItem {
 const DB_NAME = 'SwiftRevOffline';
 const DB_VERSION = 1;
 
+// Manual UUID v4 generator for non-secure contexts
+function generateOfflineId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 class OfflineStorage {
     private dbPromise: Promise<IDBPDatabase>;
 
@@ -55,7 +67,7 @@ class OfflineStorage {
 
     async addToSyncQueue(type: 'transaction' | 'patient', data: any) {
         const item: SyncItem = {
-            id: crypto.randomUUID(), // Browser crypto API
+            id: generateOfflineId(), // Fallback for insecure browsers
             type,
             data,
             timestamp: Date.now(),

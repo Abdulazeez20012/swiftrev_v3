@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, IsOptional, IsUUID, IsEmail } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsUUID, IsEmail, IsEnum } from 'class-validator';
+
+export enum PatientType {
+    REGULAR = 'regular',
+    NHIS = 'nhis',
+    RETAINER = 'retainer',
+    CAPITATION = 'capitation',
+}
 
 export class CreatePatientDto {
     @IsUUID()
@@ -36,4 +43,8 @@ export class CreatePatientDto {
     @IsUUID()
     @IsOptional()
     onboardedBy?: string;
+
+    @IsEnum(PatientType)
+    @IsOptional()
+    patientType?: PatientType;
 }

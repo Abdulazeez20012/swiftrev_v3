@@ -29,6 +29,8 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
         name: '',
         description: '',
         amount: '',
+        nhisAmount: '',
+        paymentType: 'cash',
         departmentId: '',
         hospitalId: user?.hospitalId || ''
     });
@@ -90,6 +92,8 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
                 name: formData.name,
                 description: formData.description,
                 amount: parseFloat(formData.amount),
+                paymentType: formData.paymentType,
+                nhisAmount: formData.nhisAmount ? parseFloat(formData.nhisAmount) : undefined,
                 departmentId: formData.departmentId,
                 hospitalId: formData.hospitalId
             });
@@ -99,6 +103,8 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
                 name: '',
                 description: '',
                 amount: '',
+                nhisAmount: '',
+                paymentType: 'cash',
                 departmentId: '',
                 hospitalId: user?.hospitalId || ''
             });
@@ -212,6 +218,40 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
                                     ))}
                                 </select>
                             </div>
+                        </div>
+
+                        {/* Payment Type */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                                    <Tag className="h-3 w-3" /> Payment Type
+                                </label>
+                                <select
+                                    className="w-full px-4 py-4 bg-secondary/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none appearance-none"
+                                    value={formData.paymentType}
+                                    onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
+                                >
+                                    <option value="cash">💵 Cash (Regular)</option>
+                                    <option value="nhis">🏥 NHIS</option>
+                                    <option value="capitation">📋 Capitation</option>
+                                    <option value="retainership">🤝 Retainership</option>
+                                </select>
+                            </div>
+
+                            {formData.paymentType !== 'cash' && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                                        <DollarSign className="h-3 w-3" /> NHIS Price (₦)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        className="w-full px-4 py-4 bg-secondary/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none"
+                                        value={formData.nhisAmount}
+                                        onChange={(e) => setFormData({ ...formData, nhisAmount: e.target.value })}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 

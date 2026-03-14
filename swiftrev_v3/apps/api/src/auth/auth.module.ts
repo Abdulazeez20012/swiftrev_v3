@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { HospitalScopeGuard } from './guards/hospital-scope.guard';
 
 @Module({
     imports: [
@@ -25,8 +26,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
             },
         }),
     ],
-    providers: [AuthService, JwtStrategy],
+    providers: [AuthService, JwtStrategy, HospitalScopeGuard],
     controllers: [AuthController],
-    exports: [AuthService, JwtModule],
+    exports: [AuthService, JwtModule, HospitalScopeGuard],
 })
 export class AuthModule { }

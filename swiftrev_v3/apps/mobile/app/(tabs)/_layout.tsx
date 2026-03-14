@@ -3,16 +3,30 @@ import { Tabs } from 'expo-router';
 import {
     LayoutDashboard,
     UserPlus,
-    User,
     UserCircle,
     History,
-    Cloud
+    Cloud,
+    BarChart2
 } from 'lucide-react-native';
-import { useAuthStore } from '../../src/store/useAuthStore';
 
 export default function TabLayout() {
     return (
-        <Tabs screenOptions={{ tabBarActiveTintColor: '#3b82f6', headerShown: true }}>
+        <Tabs screenOptions={{
+            tabBarActiveTintColor: '#67B1A1',
+            tabBarInactiveTintColor: '#9CA3AF',
+            tabBarStyle: {
+                backgroundColor: '#fff',
+                borderTopColor: '#F3F4F6',
+                height: 80,
+                paddingBottom: 16,
+                paddingTop: 8,
+            },
+            tabBarLabelStyle: {
+                fontSize: 10,
+                fontWeight: '800',
+                letterSpacing: 0.5,
+            },
+        }}>
             <Tabs.Screen
                 name="index"
                 options={{
@@ -22,11 +36,11 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="directory"
+                name="patients"
                 options={{
-                    title: 'Patients',
+                    title: 'Register',
                     headerShown: false,
-                    tabBarIcon: ({ color }) => <User size={24} color={color} />,
+                    tabBarIcon: ({ color }) => <UserPlus size={24} color={color} />,
                 }}
             />
             <Tabs.Screen
@@ -38,11 +52,11 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="sync"
+                name="earnings"
                 options={{
-                    title: 'Sync',
+                    title: 'Earnings',
                     headerShown: false,
-                    tabBarIcon: ({ color }) => <Cloud size={24} color={color} />,
+                    tabBarIcon: ({ color }) => <BarChart2 size={24} color={color} />,
                 }}
             />
             <Tabs.Screen
@@ -51,6 +65,21 @@ export default function TabLayout() {
                     title: 'Profile',
                     headerShown: false,
                     tabBarIcon: ({ color }) => <UserCircle size={24} color={color} />,
+                }}
+            />
+            {/* Hidden from tabs but still routable */}
+            <Tabs.Screen
+                name="sync"
+                options={{
+                    title: 'Sync',
+                    headerShown: false,
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="directory"
+                options={{
+                    href: null,
                 }}
             />
         </Tabs>

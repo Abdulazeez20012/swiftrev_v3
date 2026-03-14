@@ -21,7 +21,8 @@ import {
     Wallet,
     DollarSign,
     ArrowLeftRight,
-    UserCog
+    UserCog,
+    FileText,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -78,6 +79,12 @@ const MainLayout = () => {
 
     const currentHospitalName = hospitals.find(h => h.id === user?.hospitalId)?.name || "St. Joseph's Medical Center";
 
+    const role = user?.role || '';
+    const isSuperAdmin = role === 'super_admin';
+    const isHospitalAdmin = role === 'hospital_admin';
+    const isFinanceOfficer = role === 'finance_officer';
+    const isFieldAgent = role === 'field_agent' || role === 'agent';
+
     const coreMenuItems = [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/transactions', label: 'Transactions', icon: Receipt },
@@ -86,21 +93,32 @@ const MainLayout = () => {
     ];
 
     const financeMenuItems = [
-        { to: '/payments', label: 'Payments', icon: DollarSign },
-        { to: '/finance', label: 'Finance & Wallets', icon: Wallet },
-        { to: '/reconciliation', label: 'Reconciliation', icon: ArrowLeftRight },
+        { to: '/billing-sheet', label: 'Billing Sheet', icon: FileText },
+        ...(!isFieldAgent ? [
+            { to: '/payments', label: 'Payments', icon: DollarSign },
+            { to: '/finance', label: 'Finance & Wallets', icon: Wallet },
+            { to: '/reconciliation', label: 'Reconciliation', icon: ArrowLeftRight },
+        ] : []),
         { to: '/claims', label: 'NHIS Claims', icon: ShieldCheck },
     ];
 
-    const adminMenuItems = [
-        { to: '/hospitals', label: 'Hospitals', icon: Building2 },
-        { to: '/users', label: 'User Management', icon: UserCog },
-        { to: '/security', label: 'Security & Alerts', icon: ShieldAlert },
-        { to: '/settings', label: 'Settings', icon: Settings },
-    ];
+    const adminMenuItems: { to: string; label: string; icon: any }[] = [];
 
-    if (user?.role === 'super_admin' || user?.role === 'hospital_admin') {
+    if (isSuperAdmin || isHospitalAdmin) {
+        adminMenuItems.push({ to: '/users', label: 'User Management', icon: UserCog });
+        adminMenuItems.push({ to: '/security', label: 'Security & Alerts', icon: ShieldAlert });
+        adminMenuItems.push({ to: '/settings', label: 'Settings', icon: Settings });
         adminMenuItems.push({ to: '/admin', label: 'Admin Panel', icon: CreditCard });
+    }
+    if (!isFieldAgent && !isFinanceOfficer) {
+        // finance officers and agents don't need user/admin tools
+    }
+    if (isSuperAdmin) {
+        adminMenuItems.push({ to: '/hospitals', label: 'Hospitals', icon: Building2 });
+    }
+
+    if (isFinanceOfficer && adminMenuItems.length === 0) {
+        adminMenuItems.push({ to: '/settings', label: 'Settings', icon: Settings });
     }
 
     const menuItems = [...coreMenuItems, ...financeMenuItems, ...adminMenuItems];

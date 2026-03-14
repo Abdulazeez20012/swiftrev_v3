@@ -225,10 +225,11 @@ const FinanceDashboard: React.FC = () => {
 // ─── Top-Up Module ────────────────────────────────────────────────────────────
 const TopUpModule: React.FC = () => {
     const { user: currentUser } = useAuth();
+    const isSuperAdmin = currentUser?.role === 'super_admin';
     const [hospitals, setHospitals] = useState<Hospital[]>([]);
     const [agents, setAgents] = useState<User[]>([]);
     const [fundingHistory, setFundingHistory] = useState<FundingTransaction[]>([]);
-    const [selectedHospital, setSelectedHospital] = useState('');
+    const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospitalId || '');
     const [selectedAgent, setSelectedAgent] = useState('');
     const [amount, setAmount] = useState('');
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
@@ -236,10 +237,12 @@ const TopUpModule: React.FC = () => {
     const [showConfirm, setShowConfirm] = useState(false);
     const [historySearch, setHistorySearch] = useState('');
 
-    // Load hospitals
+    // Load hospitals (super_admin only)
     useEffect(() => {
-        api.get<Hospital[]>('/hospitals').then(r => setHospitals(r.data || [])).catch(() => { });
-    }, []);
+        if (isSuperAdmin) {
+            api.get<Hospital[]>('/hospitals').then(r => setHospitals(r.data || [])).catch(() => { });
+        }
+    }, [isSuperAdmin]);
 
     // Load agents when hospital changes
     useEffect(() => {
@@ -323,6 +326,8 @@ const TopUpModule: React.FC = () => {
             <div className="lg:col-span-1">
                 <div className="bg-card p-6 rounded-2xl border border-border shadow-sm space-y-4">
                     <h3 className="text-lg font-bold flex items-center gap-2"><CreditCard className="text-primary" /> Fund Agent Wallet</h3>
+                    {/* Hospital selector — super_admin only */}
+                    {isSuperAdmin && (
                     <div>
                         <label className="block text-sm font-medium mb-1">Select Hospital</label>
                         <div className="relative">
@@ -333,6 +338,12 @@ const TopUpModule: React.FC = () => {
                             </select>
                         </div>
                     </div>
+                    )}
+                    {!isSuperAdmin && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 rounded-xl p-3">
+                            <p className="text-xs font-bold text-blue-700">Funding agents for your hospital only.</p>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-sm font-medium mb-1">Select Agent</label>
                         <div className="relative">

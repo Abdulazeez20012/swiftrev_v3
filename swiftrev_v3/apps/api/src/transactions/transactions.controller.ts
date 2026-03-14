@@ -3,10 +3,12 @@ import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { HospitalScopeGuard } from '../auth/guards/hospital-scope.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('transactions')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, HospitalScopeGuard)
 export class TransactionsController {
     constructor(private readonly transactionsService: TransactionsService) { }
 
@@ -19,14 +21,14 @@ export class TransactionsController {
     @Get()
     @Permissions('transactions:read', 'transactions:all')
     findAll(
-        @Query('hospitalId') hospitalId: string,
+        @CurrentUser() user: any,
         @Query('status') status?: string,
         @Query('paymentMethod') paymentMethod?: string,
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
         @Query('agentId') agentId?: string,
     ) {
-        return this.transactionsService.findAllByHospital(hospitalId, status, paymentMethod, limit, offset, agentId);
+        return this.transactionsService.findAllByHospital(user.hospitalId, status, paymentMethod, limit, offset, agentId);
     }
 
     @Get(':id')

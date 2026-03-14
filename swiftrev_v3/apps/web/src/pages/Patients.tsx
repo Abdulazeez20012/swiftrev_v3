@@ -7,7 +7,6 @@ import {
     Phone,
     Mail,
     Calendar,
-    MapPin,
     MoreVertical,
     Activity,
     X,
@@ -38,7 +37,8 @@ const Patients = () => {
         email: '',
         address: '',
         dateOfBirth: '',
-        gender: 'Other'
+        gender: 'Other',
+        patientType: 'regular',
     });
 
     const fetchPatients = async () => {
@@ -103,7 +103,8 @@ const Patients = () => {
                 email: '',
                 address: '',
                 dateOfBirth: '',
-                gender: 'Other'
+                gender: 'Other',
+                patientType: 'regular',
             });
         } catch (error: any) {
             if (!error.response && !syncManager.isOnline()) {
@@ -175,6 +176,7 @@ const Patients = () => {
                                 <th className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-widest">Patient Details</th>
                                 <th className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-widest">Contact Information</th>
                                 <th className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-widest">Attributes</th>
+                                <th className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-widest">Patient Type</th>
                                 <th className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
@@ -224,6 +226,23 @@ const Patients = () => {
                                             </div>
                                         </div>
                                     </td>
+                                    {/* Patient Type Badge */}
+                                    <td className="px-8 py-5">
+                                        {(() => {
+                                            const typeMap: Record<string, string> = {
+                                                regular: 'bg-emerald-100 text-emerald-700',
+                                                nhis: 'bg-blue-100 text-blue-700',
+                                                retainer: 'bg-amber-100 text-amber-700',
+                                                capitation: 'bg-purple-100 text-purple-700',
+                                            };
+                                            const t = p.patient_type || 'regular';
+                                            return (
+                                                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${typeMap[t] || 'bg-secondary text-foreground'}`}>
+                                                    {t}
+                                                </span>
+                                            );
+                                        })()}
+                                    </td>
                                     <td className="px-8 py-5 text-right">
                                         <button className="p-2 hover:bg-secondary rounded-xl transition-all">
                                             <MoreVertical className="h-5 w-5 text-muted-foreground" />
@@ -232,7 +251,7 @@ const Patients = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={4} className="px-8 py-20 text-center">
+                                <td colSpan={5} className="px-8 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <Search className="h-10 w-10 text-muted-foreground/30" />
                                             <p className="text-muted-foreground font-bold">No patients found matching your search.</p>
@@ -315,16 +334,17 @@ const Patients = () => {
                                                 />
                                             </div>
                                             <div className="space-y-2.5 md:col-span-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Address</label>
-                                                <div className="relative group">
-                                                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <input
-                                                        className="w-full pl-12 pr-5 py-4 bg-secondary/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none font-bold"
-                                                        value={newPatient.address}
-                                                        placeholder="Street address..."
-                                                        onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
-                                                    />
-                                                </div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Patient Type</label>
+                                                <select
+                                                    className="w-full px-5 py-4 bg-secondary/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none font-bold appearance-none"
+                                                    value={newPatient.patientType}
+                                                    onChange={(e) => setNewPatient({ ...newPatient, patientType: e.target.value })}
+                                                >
+                                                    <option value="regular">🟢 Regular (Cash)</option>
+                                                    <option value="nhis">🟦 NHIS</option>
+                                                    <option value="retainer">🟡 Retainership</option>
+                                                    <option value="capitation">🟣 Capitation</option>
+                                                </select>
                                             </div>
                                         </div>
 

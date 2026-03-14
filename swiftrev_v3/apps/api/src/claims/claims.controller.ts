@@ -1,28 +1,30 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ClaimsService } from './claims.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { HospitalScopeGuard } from '../auth/guards/hospital-scope.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('claims')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, HospitalScopeGuard)
 export class ClaimsController {
     constructor(private readonly claimsService: ClaimsService) { }
 
     @Get()
     async getPending(
-        @Req() req: any,
+        @CurrentUser() user: any,
         @Query('limit') limit?: number,
         @Query('offset') offset?: number
     ) {
         return this.claimsService.findPendingClaims(
-            req.user.hospitalId,
+            user.hospitalId,
             limit ? Number(limit) : 20,
             offset ? Number(offset) : 0
         );
     }
 
     @Get('stats')
-    async getStats(@Req() req: any) {
-        return this.claimsService.getStats(req.user.hospitalId);
+    async getStats(@CurrentUser() user: any) {
+        return this.claimsService.getStats(user.hospitalId);
     }
 
     @Get(':id')

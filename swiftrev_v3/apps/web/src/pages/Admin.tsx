@@ -294,7 +294,9 @@ const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
                         <tr>
                             <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase">Service Name</th>
                             <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase">Department</th>
-                            <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase">Amount</th>
+                            <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase">Regular Price</th>
+                            <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase">NHIS Price</th>
+                            <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase">Type</th>
                             <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase text-right">Actions</th>
                         </tr>
                     </thead>
@@ -303,7 +305,26 @@ const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
                             <tr key={i.id} className="hover:bg-secondary/10 transition-colors">
                                 <td className="px-6 py-4 text-sm font-bold text-foreground">{i.name}</td>
                                 <td className="px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">{i.departments?.name || 'General'}</td>
-                                <td className="px-6 py-4 text-sm font-black text-primary">₦{i.amount.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-sm font-black text-primary">₦{Number(i.amount || 0).toLocaleString()}</td>
+                                <td className="px-6 py-4 text-sm font-bold text-blue-600">
+                                    {i.nhis_amount ? `₦${Number(i.nhis_amount).toLocaleString()}` : <span className="text-muted-foreground text-xs">—</span>}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {(() => {
+                                        const typeMap: Record<string, string> = {
+                                            cash: 'bg-emerald-100 text-emerald-700',
+                                            nhis: 'bg-blue-100 text-blue-700',
+                                            capitation: 'bg-purple-100 text-purple-700',
+                                            retainership: 'bg-orange-100 text-orange-700',
+                                        };
+                                        const t = i.payment_type || 'cash';
+                                        return (
+                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${typeMap[t] || 'bg-secondary text-foreground'}`}>
+                                                {t}
+                                            </span>
+                                        );
+                                    })()}
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                     <button className="p-2 hover:bg-secondary rounded-lg text-muted-foreground">
                                         <Edit className="h-4 w-4" />
