@@ -10,13 +10,12 @@ import RevenueItems from './pages/RevenueItems';
 import AdminPanel from './pages/Admin';
 import ClaimsDashboard from './pages/ClaimsDashboard';
 import SecurityDashboard from './pages/SecurityDashboard';
-
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="flex flex-col items-center justify-center h-full opacity-40 space-y-4">
-    <h1 className="text-4xl font-black uppercase tracking-tighter">{title}</h1>
-    <p className="font-bold text-lg text-primary">Integration in progress for upcoming features</p>
-  </div>
-);
+import Finance from './pages/Finance';
+import HospitalManagement from './pages/Hospitals';
+import UserManagement from './pages/UserManagement';
+import Payments from './pages/Payments';
+import Settings from './pages/Settings';
+import Reconciliation from './pages/Reconciliation';
 
 const App = () => {
   return (
@@ -39,13 +38,18 @@ const App = () => {
             <Route path="revenue-items" element={<RevenueItems />} />
             <Route path="claims" element={<ClaimsDashboard />} />
             <Route path="security" element={<SecurityDashboard />} />
-            <Route path="wallet" element={<PlaceholderPage title="Hospital Wallet" />} />
+            <Route path="finance" element={<Finance />} />
+            <Route path="hospitals" element={<HospitalManagement />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="reconciliation" element={<Reconciliation />} />
             <Route path="admin" element={<AdminPanel />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
-    </Router >
+    </Router>
   );
 };
 

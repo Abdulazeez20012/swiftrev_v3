@@ -25,11 +25,24 @@ export class ClaimsController {
         return this.claimsService.getStats(req.user.hospitalId);
     }
 
+    @Get(':id')
+    async getById(@Param('id') id: string) {
+        return this.claimsService.getClaimById(id);
+    }
+
     @Post(':id/settle')
     async settle(
         @Param('id') id: string,
         @Body('reference') reference: string
     ) {
         return this.claimsService.settleClaim(id, reference);
+    }
+
+    @Post(':id/reject')
+    async reject(
+        @Param('id') id: string,
+        @Body('reason') reason: string
+    ) {
+        return this.claimsService.rejectClaim(id, reason);
     }
 }

@@ -6,7 +6,8 @@ import {
     ScrollView,
     TouchableOpacity,
     RefreshControl,
-    ActivityIndicator
+    ActivityIndicator,
+    Image
 } from 'react-native';
 import {
     TrendingUp,
@@ -16,28 +17,29 @@ import {
     CloudOff,
     CheckCircle2,
     Wallet,
-    Zap
+    Zap,
+    Plus,
+    Banknote,
+    Tag
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useSyncStore } from '../../src/store/useSyncStore';
 import api from '../../src/services/api';
+import { useRouter } from 'expo-router';
 import QuickCollectionModal from '../../src/components/QuickCollectionModal';
 
 export default function AgentDashboard() {
+    const router = useRouter();
     const { user, logout } = useAuthStore();
-    const { processQueue, queue } = useSyncStore();
+    const { status, pendingCount, init } = useSyncStore();
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [isCollectionOpen, setIsCollectionOpen] = useState(false);
 
     useEffect(() => {
-        // Background sync trigger
-        const interval = setInterval(() => {
-            if (queue.length > 0) processQueue();
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [queue]);
+        init();
+    }, []);
 
     const fetchStats = async () => {
         try {
@@ -67,53 +69,84 @@ export default function AgentDashboard() {
         >
             <View style={styles.topBar}>
                 <View style={styles.syncStatus}>
-                    <View style={[styles.pulse, queue.length > 0 && { backgroundColor: '#F59E0B' }]} />
-                    <Text style={styles.syncText}>{queue.length > 0 ? `${queue.length} PENDING SYNC` : 'Online & Synced'}</Text>
+                    <View style={[
+                        styles.pulse,
+                        status === 'offline' && { backgroundColor: '#F59E0B' },
+                        status === 'syncing' && { backgroundColor: '#67B1A1' }
+                    ]} />
+                    <Text style={styles.syncText}>
+                        {status === 'offline' ? `${pendingCount} PENDING` :
+                            status === 'syncing' ? 'SYNCING...' : 'Online & Synced'}
+                    </Text>
                 </View>
+                <Image
+                    source={require('../../assets/logo.jpg')}
+                    style={styles.headerLogo}
+                    resizeMode="contain"
+                />
                 <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
                     <LogOut size={18} color="#666" />
                 </TouchableOpacity>
             </View>
 
             <View style={styles.header}>
-                <Text style={styles.greeting}>Good day,</Text>
-                <Text style={styles.name}>{user?.email?.split('@')[0] || 'Agent'}</Text>
+                <View style={styles.headerTop}>
+                    <Text style={styles.welcome}>Hi, {user?.email?.split('@')[0] || 'Agent'}</Text>
+                    <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
+                </View>
+                <Text style={styles.title}>Dashboard</Text>
             </View>
 
             <View style={styles.statsGrid}>
                 <StatCard
-                    title="Patients Registered"
+                    title="Patients"
                     value={stats?.patientsCount || "0"}
-                    icon={<Users size={20} color="#000" />}
-                    bg="#F3F4F6"
+                    icon={<Users size={20} color="#0D2E33" />}
+                    bg="#F0F5F5"
                 />
                 <StatCard
-                    title="Revenue Collected"
+                    title="Revenue"
                     value={`₦${(stats?.revenueTotal || 0).toLocaleString()}`}
-                    icon={<TrendingUp size={20} color="#000" />}
-                    bg="#F3F4F6"
+                    icon={<TrendingUp size={20} color="#0D2E33" />}
+                    bg="#F0F5F5"
                 />
+                <TouchableOpacity
+                    style={[styles.card, { backgroundColor: '#F0F5F5', justifyContent: 'center', alignItems: 'center' }]}
+                    onPress={() => router.push('/catalog')}
+                >
+                    <Tag size={20} color="#0D2E33" />
+                    <Text style={styles.cardTitle}>Catalog</Text>
+                </TouchableOpacity>
             </View>
 
             <View style={styles.walletCard}>
                 <View style={styles.walletHeader}>
                     <View style={styles.walletIcon}>
-                        <Wallet size={24} color="#fff" />
+                        <Wallet size={24} color="#67B1A1" />
                     </View>
                     <Text style={styles.walletTitle}>Agent Balance</Text>
                 </View>
                 <Text style={styles.walletBalance}>₦{(stats?.balance || 0).toLocaleString()}</Text>
+
+                <TouchableOpacity
+                    style={styles.walletActionBtn}
+                    onPress={() => setIsCollectionOpen(true)}
+                >
+                    <Plus size={16} color="#67B1A1" />
+                    <Text style={styles.walletActionText}>New Cash Collection</Text>
+                </TouchableOpacity>
+
                 <View style={styles.walletFooter}>
-                    <Text style={styles.walletGoal}>Daily Goal: 80%</Text>
+                    <Text style={styles.walletGoal}>Performance: {stats?.performance || 0}%</Text>
                     <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '80%' }]} />
+                        <View style={[styles.progressFill, { width: `${stats?.performance || 0}%`, backgroundColor: '#67B1A1' }]} />
                     </View>
                 </View>
             </View>
 
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Recent Syncs</Text>
-                <TouchableOpacity>
+                <Text style={styles.sectionTitle}>Recent Activity</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
                     <Text style={styles.seeAll}>See History</Text>
                 </TouchableOpacity>
             </View>
@@ -138,8 +171,8 @@ export default function AgentDashboard() {
                 style={styles.mainActionButton}
                 onPress={() => setIsCollectionOpen(true)}
             >
-                <Zap size={20} color="#fff" style={{ marginRight: 10 }} />
-                <Text style={styles.actionButtonText}>Quick Collection</Text>
+                <Banknote size={20} color="#fff" style={{ marginRight: 10 }} />
+                <Text style={styles.actionButtonText}>Collect Payment / Cash</Text>
             </TouchableOpacity>
 
             <QuickCollectionModal
@@ -199,7 +232,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#10B981',
+        backgroundColor: '#67B1A1',
         marginRight: 8,
     },
     syncText: {
@@ -209,6 +242,10 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
         color: '#4B5563',
     },
+    headerLogo: {
+        height: 32,
+        width: 100,
+    },
     logoutBtn: {
         padding: 8,
         backgroundColor: '#F9FAFB',
@@ -217,7 +254,31 @@ const styles = StyleSheet.create({
         borderColor: '#E5E7EB',
     },
     header: {
-        marginBottom: 32,
+        paddingTop: 60,
+        paddingHorizontal: 24,
+        paddingBottom: 24,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    welcome: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#9CA3AF',
+    },
+    date: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#D1D5DB',
+    },
+    title: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: '#0D2E33',
+        letterSpacing: -1,
     },
     greeting: {
         fontSize: 14,
@@ -235,40 +296,59 @@ const styles = StyleSheet.create({
     },
     statsGrid: {
         flexDirection: 'row',
+        paddingHorizontal: 24,
         gap: 16,
         marginBottom: 24,
     },
     card: {
         flex: 1,
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 28,
+        minHeight: 140,
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
     },
     cardHeader: {
-        marginBottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    iconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     cardValue: {
         fontSize: 22,
         fontWeight: '900',
-        color: '#000',
-        letterSpacing: -0.5,
+        color: '#0D2E33',
+        marginTop: 12,
     },
     cardTitle: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#666',
-        marginTop: 4,
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#9CA3AF',
         textTransform: 'uppercase',
+        letterSpacing: 1,
     },
     walletCard: {
-        backgroundColor: '#000',
-        padding: 28,
+        marginHorizontal: 24,
+        padding: 24,
         borderRadius: 32,
+        backgroundColor: '#0D2E33',
         marginBottom: 32,
-        shadowColor: '#000',
+        shadowColor: '#0D2E33',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 20,
-        elevation: 5,
+        elevation: 8,
     },
     walletHeader: {
         flexDirection: 'row',
@@ -293,6 +373,22 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: '900',
         letterSpacing: -1,
+    },
+    walletActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+        marginTop: 16,
+        gap: 8,
+    },
+    walletActionText: {
+        color: '#67B1A1',
+        fontSize: 13,
+        fontWeight: '800',
     },
     walletFooter: {
         marginTop: 20,
@@ -381,7 +477,7 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
     },
     mainActionButton: {
-        backgroundColor: '#000',
+        backgroundColor: '#67B1A1',
         height: 64,
         borderRadius: 20,
         flexDirection: 'row',

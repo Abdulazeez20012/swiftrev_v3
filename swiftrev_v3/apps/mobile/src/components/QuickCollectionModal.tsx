@@ -24,10 +24,12 @@ import {
 import api from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSyncStore } from '../store/useSyncStore';
+import { offlineStorage } from '../services/OfflineStorage';
+import * as Location from 'expo-location';
 
-export default function QuickCollectionModal({ visible, onClose, onSuccess }: any) {
+export default function QuickCollectionModal({ visible, onClose, onSuccess, preSelectedPatient }: any) {
     const { user } = useAuthStore();
-    const { addToQueue } = useSyncStore();
+    const { status, addToQueue, init } = useSyncStore();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -40,50 +42,97 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess }: an
     const [paymentMethod, setPaymentMethod] = useState('cash');
 
     useEffect(() => {
+        init();
+    }, []);
+
+    useEffect(() => {
         if (visible) {
             fetchPatients();
             fetchRevenueItems();
-            setStep(1);
-            setSelectedPatient(null);
+
+            if (preSelectedPatient) {
+                setSelectedPatient(preSelectedPatient);
+                setStep(2);
+            } else {
+                setSelectedPatient(null);
+                setStep(1);
+            }
             setSelectedItem(null);
         }
-    }, [visible]);
+    }, [visible, preSelectedPatient]);
 
     const fetchPatients = async () => {
         try {
-            const res = await api.get(`/patients?hospitalId=${user?.hospitalId}`);
-            setPatients(res.data);
+            if (status === 'online') {
+                const res = await api.get(`/patients?hospitalId=${user?.hospitalId}`);
+                setPatients(res.data);
+                await offlineStorage.updateCache('patients', res.data);
+            } else {
+                const cached = await offlineStorage.getAll('patients');
+                setPatients(cached);
+            }
         } catch (err) {
             console.error(err);
+            const cached = await offlineStorage.getAll('patients');
+            setPatients(cached);
         }
     };
 
     const fetchRevenueItems = async () => {
         try {
-            const res = await api.get(`/revenue-items?hospitalId=${user?.hospitalId}`);
-            setRevenueItems(res.data);
+            if (status === 'online') {
+                const res = await api.get(`/revenue-items?hospitalId=${user?.hospitalId}`);
+                setRevenueItems(res.data);
+                await offlineStorage.updateCache('revenue_items', res.data);
+            } else {
+                const cached = await offlineStorage.getAll('revenue_items');
+                setRevenueItems(cached);
+            }
         } catch (err) {
             console.error(err);
+            const cached = await offlineStorage.getAll('revenue_items');
+            setRevenueItems(cached);
         }
     };
 
     const handleConfirm = async () => {
+        setLoading(true);
+        let locationData = { lat: 0, lng: 0 };
+
+        try {
+            const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+            if (locStatus === 'granted') {
+                const loc = await Location.getCurrentPositionAsync({});
+                locationData = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+            }
+        } catch (e) {
+            console.error('Location capture failed', e);
+        }
+
         const payload = {
             patientId: selectedPatient.id,
             revenueItemId: selectedItem.id,
             amount: selectedItem.amount,
             paymentMethod,
             hospitalId: user?.hospitalId,
-            agentId: user?.id
+            agentId: user?.id,
+            latitude: locationData.lat,
+            longitude: locationData.lng
         };
-
-        setLoading(true);
         try {
-            await api.post('/transactions', payload);
-            setStep(4); // Success step
-            onSuccess?.();
+            if (status === 'online') {
+                await api.post('/transactions', payload);
+                setStep(4); // Success step
+                onSuccess?.();
+            } else {
+                // Offline
+                await addToQueue('transaction', payload);
+                setStep(4);
+                onSuccess?.();
+            }
         } catch (err: any) {
             if (!err.response) {
+                // Network error
                 await addToQueue('transaction', payload);
                 setStep(4);
                 onSuccess?.();
@@ -162,7 +211,7 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess }: an
                                         }}
                                     >
                                         <View style={styles.iconBox}>
-                                            <Tag size={20} color="#10B981" />
+                                            <Tag size={20} color="#67B1A1" />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.itemName}>{item.name}</Text>
@@ -213,7 +262,7 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess }: an
 
                     {step === 4 && (
                         <View style={styles.success}>
-                            <CheckCircle2 size={80} color="#10B981" />
+                            <CheckCircle2 size={80} color="#67B1A1" />
                             <Text style={styles.successTitle}>Transaction Success</Text>
                             <Text style={styles.successSub}>Receipt has been generated and saved to history.</Text>
                             <TouchableOpacity style={styles.confirmBtn} onPress={onClose}>
@@ -317,7 +366,7 @@ const styles = StyleSheet.create({
     itemPrice: {
         fontSize: 14,
         fontWeight: '900',
-        color: '#10B981',
+        color: '#67B1A1',
     },
     confirmation: {
         flex: 1,
@@ -383,15 +432,15 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     payMethodActive: {
-        backgroundColor: '#000',
-        borderColor: '#000',
+        backgroundColor: '#0D2E33',
+        borderColor: '#0D2E33',
     },
     payMethodText: {
         fontSize: 11,
         fontWeight: '900',
     },
     confirmBtn: {
-        backgroundColor: '#000',
+        backgroundColor: '#0D2E33',
         height: 64,
         borderRadius: 20,
         justifyContent: 'center',

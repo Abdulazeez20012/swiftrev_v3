@@ -7,7 +7,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 
 @Controller('hospitals')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+// @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class HospitalsController {
     constructor(private readonly hospitalsService: HospitalsService) { }
 

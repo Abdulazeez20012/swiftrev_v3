@@ -16,7 +16,12 @@ import {
     CreditCard,
     Tag,
     ShieldCheck,
-    ShieldAlert
+    ShieldAlert,
+    Building2,
+    Wallet,
+    DollarSign,
+    ArrowLeftRight,
+    UserCog
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -73,19 +78,32 @@ const MainLayout = () => {
 
     const currentHospitalName = hospitals.find(h => h.id === user?.hospitalId)?.name || "St. Joseph's Medical Center";
 
-    const menuItems = [
+    const coreMenuItems = [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/transactions', label: 'Transactions', icon: Receipt },
-        { to: '/claims', label: 'NHIS Claims', icon: ShieldCheck },
-        { to: '/security', label: 'Security & Alerts', icon: ShieldAlert },
         { to: '/patients', label: 'Patients', icon: Users },
         { to: '/revenue-items', label: 'Services & Items', icon: Tag },
-        { to: '/wallet', label: 'Hospital Wallet', icon: CreditCard },
+    ];
+
+    const financeMenuItems = [
+        { to: '/payments', label: 'Payments', icon: DollarSign },
+        { to: '/finance', label: 'Finance & Wallets', icon: Wallet },
+        { to: '/reconciliation', label: 'Reconciliation', icon: ArrowLeftRight },
+        { to: '/claims', label: 'NHIS Claims', icon: ShieldCheck },
+    ];
+
+    const adminMenuItems = [
+        { to: '/hospitals', label: 'Hospitals', icon: Building2 },
+        { to: '/users', label: 'User Management', icon: UserCog },
+        { to: '/security', label: 'Security & Alerts', icon: ShieldAlert },
+        { to: '/settings', label: 'Settings', icon: Settings },
     ];
 
     if (user?.role === 'super_admin' || user?.role === 'hospital_admin') {
-        menuItems.push({ to: '/admin', label: 'Admin Panel', icon: Settings });
+        adminMenuItems.push({ to: '/admin', label: 'Admin Panel', icon: CreditCard });
     }
+
+    const menuItems = [...coreMenuItems, ...financeMenuItems, ...adminMenuItems];
 
     const handleLogout = () => {
         logout();
@@ -109,12 +127,13 @@ const MainLayout = () => {
             )}>
                 <div className="p-6">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
-                            <Activity className="h-6 w-6" />
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-lg tracking-tight">SwiftRev</h1>
-                            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest leading-none">HERMS v3</p>
+                        <img
+                            src="/logo.jpg"
+                            alt="SwiftRev Logo"
+                            className="h-10 w-auto rounded-lg shadow-sm"
+                        />
+                        <div className="hidden group-hover:block transition-all duration-300">
+                            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest leading-none">Management System</p>
                         </div>
                     </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -6,7 +6,8 @@ import {
     Layers,
     Loader2,
     AlertCircle,
-    FileText
+    FileText,
+    Building2
 } from 'lucide-react';
 
 interface CreateDepartmentModalProps {
@@ -19,25 +20,52 @@ const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }: CreateDepartmentM
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [hospitals, setHospitals] = useState<any[]>([]);
 
     const [formData, setFormData] = useState({
         name: '',
-        description: ''
+        description: '',
+        hospitalId: user?.hospitalId || ''
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            if (user?.role === 'super_admin') {
+                const fetchHospitals = async () => {
+                    try {
+                        const res = await api.get('/hospitals');
+                        setHospitals(res.data);
+                    } catch (err) {
+                        console.error('Failed to fetch hospitals', err);
+                    }
+                };
+                fetchHospitals();
+            } else {
+                setFormData(prev => ({ ...prev, hospitalId: user?.hospitalId || '' }));
+            }
+        }
+    }, [isOpen, user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.hospitalId) {
+            setError('Please select a hospital.');
+            return;
+        }
+
         setLoading(true);
         setError('');
 
         try {
             await api.post('/departments', {
-                ...formData,
-                hospitalId: user?.hospitalId
+                name: formData.name,
+                description: formData.description,
+                hospitalId: formData.hospitalId
             });
             onSuccess();
             onClose();
-            setFormData({ name: '', description: '' });
+            setFormData({ name: '', description: '', hospitalId: user?.hospitalId || '' });
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to create department. Please try again.');
         } finally {
@@ -74,6 +102,25 @@ const CreateDepartmentModal = ({ isOpen, onClose, onSuccess }: CreateDepartmentM
                     )}
 
                     <div className="space-y-4">
+                        {user?.role === 'super_admin' && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                                    <Building2 className="h-3 w-3" /> Select Hospital
+                                </label>
+                                <select
+                                    required
+                                    className="w-full px-4 py-4 bg-secondary/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none appearance-none"
+                                    value={formData.hospitalId}
+                                    onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
+                                >
+                                    <option value="" disabled>Select Hospital</option>
+                                    {hospitals.map(h => (
+                                        <option key={h.id} value={h.id}>{h.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
                                 <Layers className="h-3 w-3" /> Department Name

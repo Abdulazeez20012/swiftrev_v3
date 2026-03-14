@@ -3,8 +3,10 @@ import { Tabs } from 'expo-router';
 import {
     LayoutDashboard,
     UserPlus,
+    User,
+    UserCircle,
     History,
-    UserCircle
+    Cloud
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/useAuthStore';
 
@@ -20,11 +22,11 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="patients"
+                name="directory"
                 options={{
-                    title: 'Register',
+                    title: 'Patients',
                     headerShown: false,
-                    tabBarIcon: ({ color }) => <UserPlus size={24} color={color} />,
+                    tabBarIcon: ({ color }) => <User size={24} color={color} />,
                 }}
             />
             <Tabs.Screen
@@ -33,6 +35,14 @@ export default function TabLayout() {
                     title: 'History',
                     headerShown: false,
                     tabBarIcon: ({ color }) => <History size={24} color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="sync"
+                options={{
+                    title: 'Sync',
+                    headerShown: false,
+                    tabBarIcon: ({ color }) => <Cloud size={24} color={color} />,
                 }}
             />
             <Tabs.Screen

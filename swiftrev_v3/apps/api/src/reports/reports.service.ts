@@ -8,7 +8,6 @@ export class ReportsService {
     async getRevenueSummary(hospitalId: string, timeframe: 'daily' | 'weekly' | 'monthly') {
         const supabase = this.supabaseService.getClient();
 
-        // Calculate the start date based on timeframe
         const now = new Date();
         let startDate: Date;
 
@@ -20,12 +19,17 @@ export class ReportsService {
             startDate = new Date(now.setMonth(now.getMonth() - 1));
         }
 
-        const { data, error } = await supabase
+        let query = supabase
             .from('transactions')
             .select('amount, created_at, revenue_items(name)')
-            .eq('hospital_id', hospitalId)
             .eq('status', 'completed')
             .gte('created_at', startDate.toISOString());
+
+        if (hospitalId) {
+            query = query.eq('hospital_id', hospitalId);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             throw new BadRequestException(error.message);
@@ -50,13 +54,18 @@ export class ReportsService {
         };
     }
 
-    async getAgentPerformance(hospitalId: string) {
+    async getAgentPerformance(hospitalId?: string) {
         const supabase = this.supabaseService.getClient();
-        const { data, error } = await supabase
+        let query = supabase
             .from('transactions')
             .select('amount, created_by, users(email)')
-            .eq('hospital_id', hospitalId)
             .eq('status', 'completed');
+
+        if (hospitalId) {
+            query = query.eq('hospital_id', hospitalId);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             throw new BadRequestException(error.message);

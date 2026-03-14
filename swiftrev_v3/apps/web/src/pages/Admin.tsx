@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -28,11 +28,11 @@ function cn(...inputs: ClassValue[]) {
 // --- Sub-components ---
 
 const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
-    const [departments, setDepartments] = useState<any[]>([]);
+    const [departments, setDepartments] = useState<any[]>([]); // Keep any for now or define Dept interface
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetch = async () => {
+    const fetchItems = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get(`/departments?hospitalId=${hospitalId}`);
@@ -42,11 +42,11 @@ const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId]);
 
     useEffect(() => {
-        fetch();
-    }, [hospitalId]);
+        fetchItems();
+    }, [fetchItems]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading departments...</div>;
 
@@ -89,7 +89,7 @@ const ManageDepartments = ({ hospitalId }: { hospitalId: string }) => {
             <CreateDepartmentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={fetch}
+                onSuccess={fetchItems}
             />
         </div>
     );
@@ -100,7 +100,7 @@ const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string })
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
             const endpoint = role === 'super_admin' ? '/users' : `/users?hospitalId=${hospitalId}`;
@@ -111,11 +111,11 @@ const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string })
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId, role]);
 
     useEffect(() => {
         fetchUsers();
-    }, [hospitalId, role]);
+    }, [fetchUsers]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading users...</div>;
 
@@ -155,7 +155,7 @@ const ManageUsers = ({ hospitalId, role }: { hospitalId: string, role: string })
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="px-2 py-1 bg-secondary rounded-lg text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                        {u.role.replace('_', ' ')}
+                                        {(u.roles?.name || 'unknown').replace('_', ' ')}
                                     </span>
                                 </td>
                                 {role === 'super_admin' && (
@@ -188,7 +188,7 @@ const ManageHospitals = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchHospitals = async () => {
+    const fetchHospitals = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get('/hospitals');
@@ -198,11 +198,11 @@ const ManageHospitals = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchHospitals();
-    }, []);
+    }, [fetchHospitals]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading hospitals...</div>;
 
@@ -257,7 +257,7 @@ const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchRevenueItems = async () => {
+    const fetchRevenueItems = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get(`/revenue-items?hospitalId=${hospitalId}`);
@@ -267,11 +267,11 @@ const ManageRevenueItems = ({ hospitalId }: { hospitalId: string }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId]);
 
     useEffect(() => {
         fetchRevenueItems();
-    }, [hospitalId]);
+    }, [fetchRevenueItems]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Accessing pricing data...</div>;
 
@@ -328,22 +328,23 @@ const FinancialReports = ({ hospitalId }: { hospitalId: string }) => {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await api.get(`/reports/revenue-summary?hospitalId=${hospitalId}`);
-                setStats(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
+    const fetchStats = useCallback(async () => {
+        try {
+            const res = await api.get(`/reports/revenue-summary?hospitalId=${hospitalId}`);
+            setStats(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     }, [hospitalId]);
 
-    const totalRevenue = stats?.reduce((acc: number, curr: any) => acc + curr.revenue, 0) || 0;
-    const maxRevenue = Math.max(...(stats?.map((s: any) => s.revenue) || [1]));
+    useEffect(() => {
+        fetchStats();
+    }, [fetchStats]);
+
+    const totalRevenue = stats?.totalRevenue || 0;
+    const maxRevenue = Math.max(...(stats?.data?.map((s: any) => s.amount) || [1]));
 
     if (loading) return (
         <div className="h-64 flex items-center justify-center bg-card rounded-3xl border border-border animate-pulse">
@@ -370,11 +371,11 @@ const FinancialReports = ({ hospitalId }: { hospitalId: string }) => {
                 <div className="bg-card p-6 rounded-3xl border border-border shadow-sm h-64 flex flex-col justify-between">
                     <h4 className="font-bold text-muted-foreground uppercase text-xs tracking-widest">Revenue Velocity</h4>
                     <div className="flex-1 flex items-end gap-2 pb-2">
-                        {stats ? stats.map((s: any, i: number) => (
-                            <div key={i} className="flex-1 bg-primary/20 rounded-t-lg relative group" style={{ height: `${(s.revenue / maxRevenue) * 100}%` }}>
+                        {stats?.data ? stats.data.map((s: any, i: number) => (
+                            <div key={i} className="flex-1 bg-primary/20 rounded-t-lg relative group" style={{ height: `${(s.amount / maxRevenue) * 100}%` }}>
                                 <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
                                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl">
-                                    ₦{s.revenue.toLocaleString()}
+                                    ₦{s.amount.toLocaleString()}
                                 </div>
                             </div>
                         )) : (
@@ -416,19 +417,20 @@ const AuditLogs = ({ hospitalId }: { hospitalId: string }) => {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchAuditLogs = async () => {
-            try {
-                const res = await api.get(hospitalId ? `/audit?hospitalId=${hospitalId}` : '/audit');
-                setLogs(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchAuditLogs();
+    const fetchAuditLogs = useCallback(async () => {
+        try {
+            const res = await api.get(hospitalId ? `/audit?hospitalId=${hospitalId}` : '/audit');
+            setLogs(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
     }, [hospitalId]);
+
+    useEffect(() => {
+        fetchAuditLogs();
+    }, [fetchAuditLogs]);
 
     if (loading) return <div className="py-20 text-center animate-pulse text-sm font-bold text-muted-foreground uppercase tracking-widest">Scanning Audit Trail...</div>;
 

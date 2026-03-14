@@ -24,12 +24,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [hospitals, setHospitals] = useState<any[]>([]);
-    const roles = [
-        { id: 'hospital_admin', name: 'Hospital Admin' },
-        { id: 'finance_admin', name: 'Finance Admin' },
-        { id: 'auditor', name: 'Auditor' },
-        { id: 'agent', name: 'Field Agent' }
-    ];
+    const [roles, setRoles] = useState<any[]>([]);
 
     const [formData, setFormData] = useState({
         email: '',
@@ -41,19 +36,25 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
 
     useEffect(() => {
         if (isOpen) {
-            if (currentUser?.role === 'super_admin') {
-                const fetchHospitals = async () => {
-                    try {
-                        const res = await api.get('/hospitals');
-                        setHospitals(res.data);
-                    } catch (err) {
-                        console.error('Failed to fetch hospitals', err);
+            const fetchData = async () => {
+                try {
+                    const [rolesRes, hospitalsRes] = await Promise.all([
+                        api.get('/users/roles'),
+                        currentUser?.role === 'super_admin' ? api.get('/hospitals') : Promise.resolve({ data: [] })
+                    ]);
+
+                    setRoles(rolesRes.data);
+                    if (currentUser?.role === 'super_admin') {
+                        setHospitals(hospitalsRes.data);
+                    } else {
+                        setFormData(prev => ({ ...prev, hospitalId: currentUser?.hospitalId || '' }));
                     }
-                };
-                fetchHospitals();
-            } else {
-                setFormData(prev => ({ ...prev, hospitalId: currentUser?.hospitalId || '' }));
-            }
+                } catch (err) {
+                    console.error('Failed to fetch modal data', err);
+                    setError('Failed to load roles or hospitals');
+                }
+            };
+            fetchData();
         }
     }, [isOpen, currentUser]);
 
@@ -165,7 +166,6 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
                                     {roles.map(role => (
                                         <option key={role.id} value={role.id}>{role.name}</option>
                                     ))}
-                                    {currentUser?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
                                 </select>
                             </div>
 
@@ -181,7 +181,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
                                     onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
                                 >
                                     <option value="" disabled>Select Hospital</option>
-                                    {currentUser?.role === 'super_admin' && <option value="null">None (Global)</option>}
+                                    {currentUser?.role === 'super_admin' && <option value="">None (Global)</option>}
                                     {hospitals.map(h => (
                                         <option key={h.id} value={h.id}>{h.name}</option>
                                     ))}

@@ -29,7 +29,7 @@ export class UsersService {
             .insert([{
                 email: createUserDto.email,
                 password_hash: passwordHash,
-                hospital_id: createUserDto.hospitalId,
+                hospital_id: createUserDto.hospitalId || null,
                 role_id: createUserDto.roleId,
                 full_name: createUserDto.fullName,
             }])
@@ -43,12 +43,30 @@ export class UsersService {
         return data;
     }
 
-    async findAllByHospital(hospitalId: string) {
+    async findAllByHospital(hospitalId?: string) {
+        const supabase = this.supabaseService.getClient();
+        let query = supabase
+            .from('users')
+            .select('id, email, full_name, hospital_id, role_id, roles(name), created_at');
+
+        if (hospitalId) {
+            query = query.eq('hospital_id', hospitalId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new BadRequestException(error.message);
+        }
+
+        return data;
+    }
+
+    async findAllRoles() {
         const supabase = this.supabaseService.getClient();
         const { data, error } = await supabase
-            .from('users')
-            .select('id, email, full_name, role_id, roles(name), created_at')
-            .eq('hospital_id', hospitalId);
+            .from('roles')
+            .select('id, name');
 
         if (error) {
             throw new BadRequestException(error.message);

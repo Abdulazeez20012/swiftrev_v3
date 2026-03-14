@@ -47,6 +47,43 @@ export class ClaimsService {
         return data;
     }
 
+    async rejectClaim(transactionId: string, reason: string) {
+        const supabase = this.supabaseService.getClient();
+
+        const { data, error } = await supabase
+            .from('transactions')
+            .update({
+                settlement_status: 'rejected',
+                settlement_date: new Date().toISOString(),
+                settlement_reference: reason
+            })
+            .eq('id', transactionId)
+            .select()
+            .single();
+
+        if (error) {
+            throw new BadRequestException(error.message);
+        }
+
+        return data;
+    }
+
+    async getClaimById(transactionId: string) {
+        const supabase = this.supabaseService.getClient();
+
+        const { data, error } = await supabase
+            .from('transactions')
+            .select('*, patients(full_name), insurance_providers(name), revenue_items(name)')
+            .eq('id', transactionId)
+            .single();
+
+        if (error) {
+            throw new BadRequestException(error.message);
+        }
+
+        return data;
+    }
+
     async getStats(hospitalId: string) {
         const supabase = this.supabaseService.getClient();
 

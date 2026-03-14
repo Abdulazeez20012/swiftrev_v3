@@ -28,4 +28,12 @@ export class CreatePatientDto {
     @IsString()
     @IsOptional()
     gender?: string;
+
+    @IsString()
+    @IsOptional()
+    insuranceNumber?: string;
+
+    @IsUUID()
+    @IsOptional()
+    onboardedBy?: string;
 }

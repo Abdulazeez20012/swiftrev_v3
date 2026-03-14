@@ -11,11 +11,13 @@ import { ReceiptProcessor } from './receipt.processor';
     imports: [
         ConfigModule,
         SupabaseModule,
+        /*
         BullModule.registerQueue({
             name: 'receipt-queue',
         }),
+        */
     ],
-    providers: [NotificationService, ReceiptService, ReceiptProcessor],
-    exports: [NotificationService, ReceiptService, BullModule],
+    providers: [NotificationService, ReceiptService/*, ReceiptProcessor*/],
+    exports: [NotificationService, ReceiptService/*, BullModule*/],
 })
 export class NotificationsModule { }

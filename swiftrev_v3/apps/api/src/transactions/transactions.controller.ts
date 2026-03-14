@@ -24,8 +24,9 @@ export class TransactionsController {
         @Query('paymentMethod') paymentMethod?: string,
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
+        @Query('agentId') agentId?: string,
     ) {
-        return this.transactionsService.findAllByHospital(hospitalId, status, paymentMethod, limit, offset);
+        return this.transactionsService.findAllByHospital(hospitalId, status, paymentMethod, limit, offset, agentId);
     }
 
     @Get(':id')

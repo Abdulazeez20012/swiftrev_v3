@@ -11,10 +11,21 @@ export class WalletsService {
             .from('wallets')
             .select('*')
             .eq('hospital_id', hospitalId)
-            .single();
+            .maybeSingle();
 
         if (error) {
+            console.error(`[WalletsService] Error fetching wallet for hospital ${hospitalId}:`, error);
             throw new BadRequestException(error.message);
+        }
+
+        if (!data) {
+            // Return a default virtual wallet if none exists yet
+            return {
+                hospital_id: hospitalId,
+                balance: 0,
+                status: 'active',
+                created_at: new Date().toISOString()
+            };
         }
 
         return data;

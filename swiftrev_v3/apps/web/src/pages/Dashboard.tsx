@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -29,8 +29,23 @@ interface DashboardStats {
     fraudAlerts: number;
 }
 
-const StatCard = ({ label, value, subValue, type, icon: Icon, trend }: any) => (
-    <div className="bg-card p-6 rounded-2xl shadow-sm border border-border group hover:border-primary/50 transition-all hover:shadow-md">
+interface StatCardProps {
+    label: string;
+    value: string | number;
+    subValue?: string;
+    type?: 'primary' | 'secondary';
+    icon: React.ElementType;
+    trend?: number;
+    onClick?: () => void;
+    style?: React.CSSProperties;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value, subValue, type, icon: Icon, trend, onClick, style }) => (
+    <div
+        onClick={onClick}
+        style={style}
+        className={`bg-card p-6 rounded-2xl shadow-sm border border-border group transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : ''} ${type === 'primary' ? 'hover:border-primary/50' : 'hover:border-border/80'}`}
+    >
         <div className="flex justify-between items-start mb-4">
             <div className={`p-3 rounded-xl ${type === 'primary' ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'} group-hover:scale-110 transition-transform`}>
                 <Icon className="h-6 w-6" />
@@ -56,7 +71,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = React.useCallback(async () => {
         try {
             if (!user?.hospitalId) return;
             setLoading(true);
@@ -118,7 +133,7 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.hospitalId]);
 
     // Forecast state
     const [forecast, setForecast] = useState<any[]>([]);
@@ -133,7 +148,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchData();
-    }, [user]);
+    }, [fetchData]);
 
     if (loading) {
         return (
@@ -193,27 +208,14 @@ const Dashboard = () => {
                     icon={Receipt}
                     trend={8.2}
                 />
-                <div
+                <StatCard
+                    label="Fraud Alerts"
+                    value={stats?.fraudAlerts || 0}
+                    subValue="Click to review flags"
+                    icon={ShieldAlert}
                     onClick={() => window.location.href = '/security'}
-                    className="bg-card p-6 rounded-2xl shadow-sm border cursor-pointer transition-all hover:shadow-md"
                     style={{ borderColor: (stats?.fraudAlerts || 0) > 0 ? 'rgb(239 68 68 / 0.5)' : undefined }}
-                >
-                    <div className="flex justify-between items-start mb-4">
-                        <div className={`p-3 rounded-xl ${(stats?.fraudAlerts || 0) > 0 ? 'bg-red-500/10 text-red-500' : 'bg-secondary text-muted-foreground'}`}>
-                            <ShieldAlert className="h-6 w-6" />
-                        </div>
-                        {(stats?.fraudAlerts || 0) > 0 && (
-                            <span className="flex items-center text-xs font-bold px-2 py-1 rounded-full bg-red-500/10 text-red-500 animate-pulse">
-                                {stats?.fraudAlerts} Alert{stats!.fraudAlerts > 1 ? 's' : ''}
-                            </span>
-                        )}
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Fraud Alerts</p>
-                        <p className="text-2xl font-extrabold mt-1 text-foreground">{stats?.fraudAlerts || '—'}</p>
-                        <p className="text-xs text-muted-foreground/60 mt-1 font-medium">Click to review flags</p>
-                    </div>
-                </div>
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -1,63 +1,38 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
-
-interface SyncItem {
-    id: string;
-    type: 'patient' | 'transaction';
-    data: any;
-    timestamp: number;
-}
+import { syncManager, SyncStatus } from '../services/SyncManager';
 
 interface SyncState {
-    queue: SyncItem[];
-    isSyncing: boolean;
+    status: SyncStatus;
+    pendingCount: number;
+    lastSyncTime: string | null;
+    progress: number;
+    init: () => void;
     addToQueue: (type: 'patient' | 'transaction', data: any) => Promise<void>;
-    processQueue: () => Promise<void>;
-    loadQueue: () => Promise<void>;
+    syncNow: () => Promise<void>;
 }
 
-export const useSyncStore = create<SyncState>((set, get) => ({
-    queue: [],
-    isSyncing: false,
+export const useSyncStore = create<SyncState>((set) => ({
+    status: 'online',
+    pendingCount: 0,
+    lastSyncTime: null,
+    progress: 0,
 
-    loadQueue: async () => {
-        const stored = await AsyncStorage.getItem('sync_queue');
-        if (stored) {
-            set({ queue: JSON.parse(stored) });
-        }
+    init: () => {
+        syncManager.addListener((state) => {
+            set({
+                status: state.status,
+                pendingCount: state.pendingCount,
+                lastSyncTime: state.lastSyncTime,
+                progress: state.progress
+            });
+        });
     },
 
     addToQueue: async (type, data) => {
-        const newItem: SyncItem = {
-            id: crypto.randomUUID(),
-            type,
-            data,
-            timestamp: Date.now(),
-        };
-        const newQueue = [...get().queue, newItem];
-        set({ queue: newQueue });
-        await AsyncStorage.setItem('sync_queue', JSON.stringify(newQueue));
+        await syncManager.queueOffline(type, data);
     },
 
-    processQueue: async () => {
-        if (get().isSyncing || get().queue.length === 0) return;
-
-        set({ isSyncing: true });
-        const currentQueue = [...get().queue];
-        const failedItems: SyncItem[] = [];
-
-        for (const item of currentQueue) {
-            try {
-                const endpoint = item.type === 'patient' ? '/patients' : '/transactions';
-                await api.post(endpoint, { ...item.data, offlineId: item.id });
-            } catch (error) {
-                console.error(`Sync failed for ${item.id}`, error);
-                failedItems.push(item);
-            }
-        }
-
-        set({ queue: failedItems, isSyncing: false });
-        await AsyncStorage.setItem('sync_queue', JSON.stringify(failedItems));
+    syncNow: async () => {
+        await syncManager.syncPending();
     },
 }));

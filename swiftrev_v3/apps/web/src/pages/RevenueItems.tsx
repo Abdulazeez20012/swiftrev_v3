@@ -11,17 +11,11 @@ import {
     Zap,
     WifiOff
 } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
 import AddRevenueItemModal from '../components/AddRevenueItemModal';
 import NewTransactionModal from '../components/NewTransactionModal';
 import { syncManager } from '../services/SyncManager';
 import { offlineStorage } from '../services/OfflineStorage';
 
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
 const RevenueItems = () => {
     const { user } = useAuth();
     const [items, setItems] = useState<any[]>([]);

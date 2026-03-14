@@ -48,8 +48,8 @@ const OnboardHospitalModal = ({ isOpen, onClose, onSuccess }: OnboardHospitalMod
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="bg-card w-full max-w-lg rounded-[2.5rem] border border-border shadow-2xl relative overflow-hidden flex flex-col">
                 <div className="p-8 pb-4 flex items-center justify-between">
-                    <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
-                        <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
+                    <h2 className="text-2xl font-black tracking-tight flex items-center gap-3 text-primary">
+                        <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                             <Building2 className="h-5 w-5" />
                         </div>
                         Onboard Hospital

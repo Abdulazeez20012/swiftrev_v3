@@ -40,4 +40,12 @@ export class CreateTransactionDto {
     @IsString()
     @IsOptional()
     proofImageUrl?: string;
+
+    @IsNumber()
+    @IsOptional()
+    latitude?: number;
+
+    @IsNumber()
+    @IsOptional()
+    longitude?: number;
 }

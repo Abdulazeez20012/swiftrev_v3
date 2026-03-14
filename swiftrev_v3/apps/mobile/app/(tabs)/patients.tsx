@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -34,16 +34,18 @@ export default function PatientRegistration() {
     const [step, setStep] = useState(1);
 
     const [form, setForm] = useState({
-        full_name: '',
-        phone: '',
+        fullName: '',
+        phoneNumber: '',
         age: '',
         address: '',
-        gender: 'other'
+        gender: 'other',
+        insuranceNumber: '',
+        email: ''
     });
 
     const handleNext = () => {
         if (step === 1) {
-            if (!form.full_name || !form.phone) {
+            if (!form.fullName || !form.phoneNumber) {
                 Alert.alert('Required Fields', 'Please enter at least the name and phone number.');
                 return;
             }
@@ -53,26 +55,41 @@ export default function PatientRegistration() {
         }
     };
 
-    const { addToQueue } = useSyncStore();
+    const { status, addToQueue, init } = useSyncStore();
+
+    useEffect(() => {
+        init();
+    }, []);
 
     const handleSubmit = async () => {
         const payload = {
-            ...form,
-            hospital_id: user?.hospitalId,
-            onboarded_by: user?.id
+            hospitalId: user?.hospitalId,
+            fullName: form.fullName,
+            phoneNumber: form.phoneNumber,
+            email: form.email,
+            address: form.address,
+            gender: form.gender,
+            insuranceNumber: form.insuranceNumber,
+            onboardedBy: user?.id,
         };
 
         setLoading(true);
         try {
-            // Try online first
-            await api.post('/patients', payload);
-            Alert.alert('Success', 'Patient onboarded successfully.');
-            router.replace('/(tabs)');
-        } catch (error: any) {
-            if (!error.response) {
-                // Offline case
+            if (status === 'online') {
+                await api.post('/patients', payload);
+                Alert.alert('Success', 'Patient onboarded successfully.');
+                router.replace('/(tabs)');
+            } else {
+                // Offline or syncing
                 await addToQueue('patient', payload);
                 Alert.alert('Offline Mode', 'Patient saved locally and will sync when online.');
+                router.replace('/(tabs)');
+            }
+        } catch (error: any) {
+            if (!error.response) {
+                // Network error
+                await addToQueue('patient', payload);
+                Alert.alert('Offline Mode', 'Network issue detected. Patient saved locally and will sync when online.');
                 router.replace('/(tabs)');
             } else {
                 Alert.alert('Registration Failed', error.response?.data?.message || 'Error occurred.');
@@ -117,8 +134,8 @@ export default function PatientRegistration() {
                         <InputItem
                             label="Full Name"
                             placeholder="e.g. John Doe"
-                            value={form.full_name}
-                            onChangeText={(text: string) => setForm({ ...form, full_name: text })}
+                            value={form.fullName}
+                            onChangeText={(text: string) => setForm({ ...form, fullName: text })}
                             icon={<User size={18} color="#9CA3AF" />}
                         />
 
@@ -126,8 +143,8 @@ export default function PatientRegistration() {
                             label="Phone Number"
                             placeholder="+234..."
                             keyboardType="phone-pad"
-                            value={form.phone}
-                            onChangeText={(text: string) => setForm({ ...form, phone: text })}
+                            value={form.phoneNumber}
+                            onChangeText={(text: string) => setForm({ ...form, phoneNumber: text })}
                             icon={<Phone size={18} color="#9CA3AF" />}
                         />
 
@@ -166,6 +183,23 @@ export default function PatientRegistration() {
                             value={form.address}
                             onChangeText={(text: string) => setForm({ ...form, address: text })}
                             icon={<MapPin size={18} color="#9CA3AF" />}
+                        />
+
+                        <InputItem
+                            label="Insurance Number (Optional)"
+                            placeholder="NHIS or HMO ID"
+                            value={form.insuranceNumber}
+                            onChangeText={(text: string) => setForm({ ...form, insuranceNumber: text })}
+                            icon={<ShieldCheck size={18} color="#9CA3AF" />}
+                        />
+
+                        <InputItem
+                            label="Email Address (Optional)"
+                            placeholder="patient@example.com"
+                            keyboardType="email-address"
+                            value={form.email}
+                            onChangeText={(text: string) => setForm({ ...form, email: text })}
+                            icon={<User size={18} color="#9CA3AF" />}
                         />
                     </View>
                 )}

@@ -1,6 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SupabaseModule } from './common/supabase/supabase.module';
@@ -21,28 +20,14 @@ import { ReportsModule } from './reports/reports.module';
 import { MlModule } from './common/ml/ml.module';
 import { InsuranceProvidersModule } from './insurance-providers/insurance-providers.module';
 import { ClaimsModule } from './claims/claims.module';
-import { BullModule } from '@nestjs/bullmq';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { Request, Response, NextFunction } from 'express';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 10,
-    }]),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get('REDIS_PORT', 6379),
-          password: configService.get('REDIS_PASSWORD'),
-        },
-      }),
-    }),
-
     SupabaseModule,
     RedisModule,
     AuditModule,
@@ -61,8 +46,21 @@ import { BullModule } from '@nestjs/bullmq';
     MlModule,
     InsuranceProvidersModule,
     ClaimsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply((req: Request, res: Response, next: NextFunction) => {
+        const { method, path } = req;
+        res.on('finish', () => {
+          console.log(`[Request] ${method} ${path} - ${res.statusCode}`);
+        });
+        next();
+      })
+      .forRoutes('*');
+  }
+}

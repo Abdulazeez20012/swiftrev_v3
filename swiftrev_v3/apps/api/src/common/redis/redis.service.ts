@@ -25,12 +25,10 @@ export class RedisService {
             password,
             enableOfflineQueue: false,
             lazyConnect: false,
-            retryStrategy: (times) => {
-                if (times >= 5) {
-                    this.logger.warn('Redis unavailable after 5 attempts. Disabling Redis.');
-                    return null; // Stop retrying
-                }
-                return Math.min(times * 100, 2000);
+            retryStrategy: () => {
+                this.logger.warn('Redis unavailable. Disabling Redis for this session.');
+                this.redisAvailable = false;
+                return null; // Stop retrying immediately
             },
         });
 

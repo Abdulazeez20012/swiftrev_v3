@@ -1,7 +1,10 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://10.0.2.2:3000'; // Android emulator localhost
+const API_BASE_URL =
+    typeof window !== 'undefined'
+        ? `http://${window.location.hostname}:3000`
+        : 'http://10.0.2.2:3000'; // Android emulator fallback
 
 const api = axios.create({
     baseURL: API_BASE_URL,

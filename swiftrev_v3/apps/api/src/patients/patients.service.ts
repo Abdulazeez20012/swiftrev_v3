@@ -19,6 +19,8 @@ export class PatientsService {
                 address: createPatientDto.address,
                 date_of_birth: createPatientDto.dateOfBirth,
                 gender: createPatientDto.gender,
+                insurance_number: createPatientDto.insuranceNumber,
+                onboarded_by: createPatientDto.onboardedBy,
             }])
             .select()
             .single();
@@ -38,6 +40,7 @@ export class PatientsService {
             .eq('hospital_id', hospitalId);
 
         if (error) {
+            console.error(`[PatientsService] Error fetching patients for hospital ${hospitalId}:`, error);
             throw new BadRequestException(error.message);
         }
 
@@ -70,6 +73,7 @@ export class PatientsService {
                 address: updatePatientDto.address,
                 date_of_birth: updatePatientDto.dateOfBirth,
                 gender: updatePatientDto.gender,
+                insurance_number: updatePatientDto.insuranceNumber,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', id)

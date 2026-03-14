@@ -10,8 +10,8 @@ export class CreateUserDto {
     password: string;
 
     @IsUUID()
-    @IsNotEmpty()
-    hospitalId: string;
+    @IsOptional()
+    hospitalId?: string;
 
     @IsUUID()
     @IsNotEmpty()

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Activity, Lock, Mail, Loader2 } from 'lucide-react';
+import { Lock, Mail, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -32,14 +32,16 @@ const LoginPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-2xl shadow-xl border border-border animate-in fade-in zoom-in duration-500">
                 <div className="text-center">
-                    <div className="mx-auto h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground mb-4 shadow-lg shadow-primary/20">
-                        <Activity className="h-8 w-8" />
-                    </div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-foreground">
-                        SwiftRev v3
+                    <img
+                        src="/logo.jpg"
+                        alt="SwiftRev Logo"
+                        className="mx-auto h-16 w-auto rounded-2xl shadow-xl mb-6 shadow-primary/10"
+                    />
+                    <h2 className="text-3xl font-[900] tracking-tight text-primary">
+                        swiftRev
                     </h2>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        AI-Powered Hospital Revenue Management
+                    <p className="mt-2 text-sm text-muted-foreground font-medium uppercase tracking-widest">
+                        Revenue Management System
                     </p>
                 </div>
 

@@ -8,11 +8,12 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
-    ImageBackground
+    ImageBackground,
+    Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/useAuthStore';
-import { ShieldCheck, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -48,9 +49,13 @@ export default function LoginScreen() {
             <View style={styles.content}>
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>
-                        <ShieldCheck size={40} color="#000" />
+                        <Image
+                            source={require('../assets/logo.jpg')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                     </View>
-                    <Text style={styles.title}>SwiftRev</Text>
+                    <Text style={styles.title}>swiftRev</Text>
                     <Text style={styles.subtitle}>Hospital Revenue Management</Text>
                 </View>
 
@@ -60,7 +65,7 @@ export default function LoginScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>EMAIL ADDRESS</Text>
                         <View style={styles.inputContainer}>
-                            <Mail size={20} color="#666" style={styles.inputIcon} />
+                            <Mail size={20} color="#67B1A1" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="agent@hospital.com"
@@ -75,7 +80,7 @@ export default function LoginScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>PASSWORD</Text>
                         <View style={styles.inputContainer}>
-                            <Lock size={20} color="#666" style={styles.inputIcon} />
+                            <Lock size={20} color="#67B1A1" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="••••••••"
@@ -121,29 +126,31 @@ const styles = StyleSheet.create({
         marginBottom: 50,
     },
     logoContainer: {
-        width: 80,
-        height: 80,
-        backgroundColor: '#F3F4F6',
+        width: 100,
+        height: 100,
+        backgroundColor: '#fff',
         borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 3,
+    },
+    logo: {
+        width: 120,
+        height: 120,
     },
     title: {
-        fontSize: 32,
+        fontSize: 36,
         fontWeight: '900',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
+        color: '#0D2E33',
     },
     subtitle: {
         fontSize: 14,
-        color: '#666',
-        fontWeight: '600',
-        marginTop: 5,
+        color: '#67B1A1',
+        fontWeight: '700',
+        marginTop: -2,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
     form: {
         width: '100%',
@@ -178,7 +185,7 @@ const styles = StyleSheet.create({
         color: '#000',
     },
     loginButton: {
-        backgroundColor: '#000',
+        backgroundColor: '#0D2E33',
         height: 56,
         borderRadius: 16,
         justifyContent: 'center',

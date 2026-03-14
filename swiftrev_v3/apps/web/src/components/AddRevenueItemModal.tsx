@@ -8,7 +8,8 @@ import {
     DollarSign,
     Loader2,
     AlertCircle,
-    FileText
+    FileText,
+    Building2
 } from 'lucide-react';
 
 interface AddRevenueItemModalProps {
@@ -22,41 +23,75 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [departments, setDepartments] = useState<any[]>([]);
+    const [hospitals, setHospitals] = useState<any[]>([]);
 
     const [formData, setFormData] = useState({
         name: '',
         description: '',
         amount: '',
-        departmentId: ''
+        departmentId: '',
+        hospitalId: user?.hospitalId || ''
     });
 
     useEffect(() => {
-        if (isOpen) {
-            const fetchDepartments = async () => {
+        if (isOpen && user?.role === 'super_admin') {
+            const fetchHospitals = async () => {
                 try {
-                    const res = await api.get(`/departments?hospitalId=${user?.hospitalId}`);
-                    setDepartments(res.data);
-                    if (res.data.length > 0) {
-                        setFormData(prev => ({ ...prev, departmentId: res.data[0].id }));
-                    }
+                    const res = await api.get('/hospitals');
+                    setHospitals(res.data);
                 } catch (err) {
-                    console.error('Failed to fetch departments', err);
+                    console.error('Failed to fetch hospitals', err);
                 }
             };
-            fetchDepartments();
+            fetchHospitals();
         }
     }, [isOpen, user]);
 
+    useEffect(() => {
+        if (isOpen && formData.hospitalId) {
+            const fetchDepartments = async () => {
+                try {
+                    const res = await api.get(`/departments?hospitalId=${formData.hospitalId}`);
+                    setDepartments(res.data);
+                    if (res.data.length > 0) {
+                        setFormData(prev => ({ ...prev, departmentId: res.data[0].id }));
+                    } else {
+                        setFormData(prev => ({ ...prev, departmentId: '' }));
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch departments', err);
+                    setDepartments([]);
+                }
+            };
+            fetchDepartments();
+        } else if (isOpen && !formData.hospitalId) {
+            setDepartments([]);
+        }
+    }, [isOpen, formData.hospitalId]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.hospitalId) {
+            setError('Please select a hospital.');
+            return;
+        }
+
+        if (!formData.departmentId) {
+            setError('Please select a department.');
+            return;
+        }
+
         setLoading(true);
         setError('');
 
         try {
             await api.post('/revenue-items', {
-                ...formData,
+                name: formData.name,
+                description: formData.description,
                 amount: parseFloat(formData.amount),
-                hospitalId: user?.hospitalId
+                departmentId: formData.departmentId,
+                hospitalId: formData.hospitalId
             });
             onSuccess();
             onClose();
@@ -64,7 +99,8 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
                 name: '',
                 description: '',
                 amount: '',
-                departmentId: departments[0]?.id || ''
+                departmentId: '',
+                hospitalId: user?.hospitalId || ''
             });
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to create item. Please try again.');
@@ -102,6 +138,25 @@ const AddRevenueItemModal = ({ isOpen, onClose, onSuccess }: AddRevenueItemModal
                     )}
 
                     <div className="space-y-4">
+                        {user?.role === 'super_admin' && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                                    <Building2 className="h-3 w-3" /> Select Hospital
+                                </label>
+                                <select
+                                    required
+                                    className="w-full px-4 py-4 bg-secondary/50 border border-border rounded-2xl focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none appearance-none"
+                                    value={formData.hospitalId}
+                                    onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
+                                >
+                                    <option value="" disabled>Select Hospital</option>
+                                    {hospitals.map(h => (
+                                        <option key={h.id} value={h.id}>{h.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
                                 <Tag className="h-3 w-3" /> Item Name

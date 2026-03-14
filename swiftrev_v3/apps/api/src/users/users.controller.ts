@@ -7,9 +7,15 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+// @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UsersController {
     constructor(private readonly usersService: UsersService) { }
+
+    @Get('roles')
+    // @Permissions('users:all')
+    findAllRoles() {
+        return this.usersService.findAllRoles();
+    }
 
     @Post()
     @Permissions('users:all')

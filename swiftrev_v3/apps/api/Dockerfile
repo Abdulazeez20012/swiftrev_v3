@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -11,14 +11,14 @@ COPY turbo.json ./
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
-# Install dependencies (using npm ci for faster/cleaner builds)
-RUN npm install
+# Install dependencies
+RUN npm ci
 
 # Build the api app
-RUN npm run build --filter=api
+RUN npx turbo run build --filter=api
 
 # Production stage
-FROM node:18-alpine
+FROM node:20-slim
 
 WORKDIR /usr/src/app
 
