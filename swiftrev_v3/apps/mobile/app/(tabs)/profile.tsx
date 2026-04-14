@@ -8,7 +8,8 @@ import {
     TouchableOpacity,
     Image,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    Platform,
 } from 'react-native';
 import {
     User,
@@ -115,16 +116,20 @@ export default function AgentProfile() {
             const fileName = uri.split('/').pop();
             const fileType = fileName?.split('.').pop();
             
-            // @ts-ignore - FormData expects an object for files in React Native
-            formData.append('file', {
-                uri,
-                name: fileName,
-                type: `image/${fileType}`,
-            });
+            if (Platform.OS === 'web') {
+                const response = await fetch(uri);
+                const blob = await response.blob();
+                formData.append('file', blob, fileName);
+            } else {
+                // @ts-ignore - FormData expects an object for files in React Native
+                formData.append('file', {
+                    uri,
+                    name: fileName,
+                    type: `image/${fileType}`,
+                });
+            }
 
-            const res = await api.post(`/uploads/profile?type=user`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const res = await api.post(`/uploads/profile?type=user`, formData);
 
             const avatar_url = res.data.url;
             await api.patch(`/users/${user?.id}`, { avatar_url });

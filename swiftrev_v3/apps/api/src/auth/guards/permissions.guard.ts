@@ -26,6 +26,14 @@ export class PermissionsGuard implements CanActivate {
             return true;
         }
 
+        // Self-Service bypass: Allow users to manage their own record
+        const request = context.switchToHttp().getRequest();
+        const params = request.params;
+        if (params.id && params.id === user.id) {
+            console.log(`PermissionsGuard: Self-service bypass for user ${user.id}`);
+            return true;
+        }
+
         const userPermissions = user?.permissions || {};
 
         const hasPermission = requiredPermissions.some((permission) => {
