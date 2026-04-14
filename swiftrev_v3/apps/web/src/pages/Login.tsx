@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Lock, Mail, Loader2 } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -31,16 +32,9 @@ const LoginPage = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-2xl shadow-xl border border-border animate-in fade-in zoom-in duration-500">
-                <div className="text-center">
-                    <img
-                        src="/logo.jpg"
-                        alt="SwiftRev Logo"
-                        className="mx-auto h-16 w-auto rounded-2xl shadow-xl mb-6 shadow-primary/10"
-                    />
-                    <h2 className="text-3xl font-[900] tracking-tight text-primary">
-                        swiftRev
-                    </h2>
-                    <p className="mt-2 text-sm text-muted-foreground font-medium uppercase tracking-widest">
+                <div className="text-center flex flex-col items-center">
+                    <Logo size="xl" className="mb-6 drop-shadow-2xl" />
+                    <p className="mt-2 text-xs text-muted-foreground font-black uppercase tracking-widest bg-secondary/30 px-3 py-1 rounded-full border border-border/50">
                         Revenue Management System
                     </p>
                 </div>

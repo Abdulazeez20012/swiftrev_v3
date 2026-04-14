@@ -10,7 +10,10 @@ async function syncPermissions() {
         .update({
             permissions: {
                 patients: true,
-                transactions: true
+                transactions: true,
+                revenue_items: ['read'],
+                departments: ['read'],
+                dashboard: ['read'],
             }
         })
         .eq('name', 'field_agent');
@@ -25,7 +28,10 @@ async function syncPermissions() {
                 patients: true,
                 transactions: true,
                 users: true,
-                hospital: true
+                hospital: true,
+                revenue_items: true,
+                departments: true,
+                dashboard: true,
             }
         })
         .eq('name', 'hospital_admin');

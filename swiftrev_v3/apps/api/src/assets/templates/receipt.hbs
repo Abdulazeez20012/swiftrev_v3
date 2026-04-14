@@ -1,136 +1,288 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        :root {
+            --primary: #0D2E33;
+            --accent: #67B1A1;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --bg-light: #F9FAFB;
+        }
+
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #333;
-            margin: 40px;
-        }
-
-        .receipt-container {
-            border: 2px solid #eee;
-            padding: 40px;
-            max-width: 600px;
-            margin: auto;
-            border-radius: 12px;
-        }
-
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #7c3aed;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-
-        .hospital-name {
-            color: #7c3aed;
-            font-size: 24px;
-            font-weight: bold;
+            font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--text-main);
             margin: 0;
+            padding: 40px;
+            background-color: #fff;
+            line-height: 1.5;
         }
 
-        .receipt-title {
+        .receipt-wrapper {
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #E5E7EB;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .receipt-header {
+            background-color: var(--bg-light);
+            padding: 40px;
+            text-align: center;
+            border-bottom: 2px solid var(--bg-light);
+        }
+
+        .logo-container {
+            margin-bottom: 20px;
+        }
+
+        .hospital-logo {
+            max-height: 80px;
+            max-width: 200px;
+            object-fit: contain;
+        }
+
+        .hospital-details h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        .hospital-details p {
+            margin: 4px 0 0;
             font-size: 14px;
-            color: #666;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .receipt-content {
+            padding: 40px;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .meta-item .label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .meta-item .value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .payment-summary {
+            margin-bottom: 40px;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .summary-table th {
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 0;
+            border-bottom: 2px solid #F3F4F6;
+        }
+
+        .summary-table td {
+            padding: 20px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .item-name {
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        .item-dept {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .item-price {
+            font-weight: 800;
+            font-size: 18px;
+            text-align: right;
+        }
+
+        .total-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .total-box {
+            background-color: var(--primary);
+            color: #fff;
+            padding: 24px 40px;
+            border-radius: 12px;
+            text-align: right;
+        }
+
+        .total-box .total-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0.8;
+        }
+
+        .total-box .total-amount {
+            font-size: 36px;
+            font-weight: 900;
+            margin: 4px 0;
+            letter-spacing: -1px;
+        }
+
+        .total-box .payment-info {
+            font-size: 11px;
+            font-weight: 700;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        .receipt-footer {
+            padding: 40px;
+            text-align: center;
+            background-color: var(--bg-light);
+        }
+
+        .footer-note {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            font-style: italic;
+        }
+
+        .branding-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #E5E7EB;
+        }
+
+        .branding-text {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 2px;
         }
 
-        .row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-
-        .label {
-            color: #888;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-
-        .value {
+        .checkmark {
+            color: var(--accent);
             font-weight: bold;
-            font-size: 14px;
-        }
-
-        .amount-section {
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 30px;
-            text-align: right;
-        }
-
-        .total-label {
-            font-size: 12px;
-            color: #666;
-        }
-
-        .total-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #111;
-            margin-top: 5px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            font-size: 10px;
-            color: #aaa;
-            border-top: 1px solid #eee;
-            pt: 20px;
         }
     </style>
 </head>
 
 <body>
-    <div class="receipt-container">
-        <div class="header">
-            <h1 class="hospital-name">{{hospitalName}}</h1>
-            <p class="receipt-title">Official Medical Receipt</p>
-        </div>
-
-        <div class="row">
-            <div class="col">
-                <p class="label">Date</p>
-                <p class="value">{{date}}</p>
+    <div class="receipt-wrapper">
+        <header class="receipt-header">
+            <div class="logo-container">
+                {{#if hospitalLogo}}
+                <img src="{{hospitalLogo}}" alt="{{hospitalName}}" class="hospital-logo">
+                {{else}}
+                <div style="height: 40px;"></div>
+                {{/if}}
             </div>
-            <div class="col" style="text-align: right;">
-                <p class="label">Receipt #</p>
-                <p class="value">{{id}}</p>
+            <div class="hospital-details">
+                <h1>{{hospitalName}}</h1>
+                <p>{{hospitalAddress}}</p>
             </div>
-        </div>
+        </header>
 
-        <div class="row">
-            <div class="col">
-                <p class="label">Patient Name</p>
-                <p class="value">{{patientName}}</p>
+        <main class="receipt-content">
+            <div class="meta-row">
+                <div class="meta-item">
+                    <div class="label">Date & Time</div>
+                    <div class="value">{{date}}</div>
+                </div>
+                <div class="meta-item" style="text-align: right;">
+                    <div class="label">Receipt Reference</div>
+                    <div class="value">#{{id}}</div>
+                </div>
             </div>
-        </div>
 
-        <div style="margin-top: 20px; border-top: 1px dashed #eee; padding-top: 20px;">
-            <div class="row">
-                <span class="value">{{revenueItemName}}</span>
-                <span class="value">₦{{amount}}</span>
+            <div class="meta-row" style="margin-bottom: 20px; border-bottom: none;">
+                <div class="meta-item">
+                    <div class="label">Patient Name</div>
+                    <div class="value">{{patientName}}</div>
+                </div>
+                <div class="meta-item" style="text-align: right;">
+                    <div class="label">Payment Status</div>
+                    <div class="value" style="color: #10B981;">PAID ✓</div>
+                </div>
             </div>
-            <p class="label" style="margin-top: -10px;">{{departmentName}}</p>
-        </div>
 
-        <div class="amount-section">
-            <p class="total-label">Total Amount Paid</p>
-            <p class="total-value">₦{{amount}}</p>
-            <p class="label">Payment Method: {{paymentMethod}}</p>
-        </div>
+            <section class="payment-summary">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="item-name">{{revenueItemName}}</div>
+                                <div class="item-dept">{{departmentName}}</div>
+                            </td>
+                            <td class="item-price">₦{{amount}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
 
-        <div class="footer">
-            <p>This is a computer-generated document. No signature required.</p>
-            <p>Securely verified by SwiftRev HERMS Nigeria.</p>
-        </div>
+            <div class="total-section">
+                <div class="total-box">
+                    <div class="total-label">Grand Total Paid</div>
+                    <div class="total-amount">₦{{amount}}</div>
+                    <div class="payment-info">Settled via {{paymentMethod}}</div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="receipt-footer">
+            <p class="footer-note">This is an automated verified document. No physical signature is required for validity.</p>
+            
+            <div class="branding-line">
+                <span class="branding-text">Powered by SwiftRev HERMS</span>
+                <span class="checkmark">✔</span>
+            </div>
+        </footer>
     </div>
 </body>
 
-</html>
+</html>

@@ -46,8 +46,8 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
                     setRoles(rolesRes.data);
                     if (currentUser?.role === 'super_admin') {
                         setHospitals(hospitalsRes.data);
-                    } else {
-                        setFormData(prev => ({ ...prev, hospitalId: currentUser?.hospitalId || '' }));
+                    } else if (currentUser?.hospitalId) {
+                        setFormData(prev => ({ ...prev, hospitalId: currentUser.hospitalId }));
                     }
                 } catch (err) {
                     console.error('Failed to fetch modal data', err);
@@ -181,12 +181,14 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }: InviteUserModalProps) =
                                     onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
                                 >
                                     <option value="" disabled>Select Hospital</option>
-                                    {currentUser?.role === 'super_admin' && <option value="">None (Global)</option>}
-                                    {hospitals.map(h => (
-                                        <option key={h.id} value={h.id}>{h.name}</option>
-                                    ))}
-                                    {currentUser?.role !== 'super_admin' && (
-                                        <option value={currentUser?.hospitalId}>Current Hospital</option>
+                                    {currentUser?.role === 'super_admin' ? (
+                                        hospitals.map(h => (
+                                            <option key={h.id} value={h.id}>{h.name}</option>
+                                        ))
+                                    ) : (
+                                        <option value={currentUser?.hospitalId || ''}>
+                                            Current Hospital
+                                        </option>
                                     )}
                                 </select>
                             </div>

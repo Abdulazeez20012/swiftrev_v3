@@ -25,9 +25,10 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response?.status === 401) {
-            await AsyncStorage.removeItem('access_token');
-            await AsyncStorage.removeItem('user');
-            // Redirect logic should be handled by the router/state
+            // Use store's logout to clear state and storage
+            const { useAuthStore } = require('../store/useAuthStore');
+            const logout = useAuthStore.getState().logout;
+            if (logout) await logout();
         }
         return Promise.reject(error);
     }

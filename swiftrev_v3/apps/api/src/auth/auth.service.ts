@@ -56,11 +56,16 @@ export class AuthService {
             .from('users')
             .select('*, roles(name, permissions)')
             .eq('email', email)
-            .single();
+            .maybeSingle();
 
-        if (dbError || !user) {
-            this.logger.error(`User ${email} authenticated via Supabase but lookup in public.users failed: ${dbError?.message || 'User not found'}`);
-            throw new UnauthorizedException('User profile not found. Please ensure the user is registered in the system.');
+        if (dbError) {
+            this.logger.error(`Database error during user profile lookup for ${email}: ${dbError.message}`);
+            throw new UnauthorizedException('Authentication service is temporarily unavailable');
+        }
+
+        if (!user) {
+            this.logger.error(`User ${email} authenticated via Supabase but lookup in public.users failed. This usually means the user was manually created in Auth without a public profile.`);
+            throw new UnauthorizedException('User profile not found. Please ensure you have a registered profile in the management system.');
         }
 
         // 3. Generate JWT for internal app use

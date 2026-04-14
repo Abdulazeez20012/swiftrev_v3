@@ -20,9 +20,11 @@ import {
     User,
     Calendar,
     Receipt as ReceiptIcon,
-    Tag
+    Tag,
+    Printer
 } from 'lucide-react-native';
 import api from '../../src/services/api';
+import { ThermalPrinter } from '../../src/services/ThermalPrinter';
 
 export default function ReceiptDetail() {
     const { id } = useLocalSearchParams();
@@ -51,6 +53,30 @@ export default function ReceiptDetail() {
             });
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    const [printing, setPrinting] = useState(false);
+
+    const handlePrint = async () => {
+        if (!transaction) return;
+        setPrinting(true);
+        try {
+            await ThermalPrinter.printReceipt({
+                hospitalName: transaction.hospitals?.name || 'SwiftRev Partner',
+                hospitalAddress: transaction.hospitals?.address || 'Medical Center',
+                patientName: transaction.patients?.full_name || 'Walk-in',
+                serviceName: transaction.revenue_items?.name,
+                amount: transaction.amount,
+                transactionId: transaction.id.split('-')[0].toUpperCase(),
+                date: new Date(transaction.created_at).toLocaleString(),
+                paymentMethod: transaction.payment_method,
+            });
+            alert('Printing request sent to device.');
+        } catch (err) {
+            alert('Printing failed. Please ensure a Bluetooth printer is connected.');
+        } finally {
+            setPrinting(false);
         }
     };
 
@@ -87,80 +113,75 @@ export default function ReceiptDetail() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.successHeader}>
-                    <View style={styles.successBadge}>
-                        <CheckCircle2 size={40} color="#10B981" />
-                    </View>
-                    <Text style={styles.statusText}>Payment Confirmed</Text>
-                    <Text style={styles.amountText}>₦{transaction.amount.toLocaleString()}</Text>
-                    <Text style={styles.dateText}>{new Date(transaction.created_at).toLocaleString()}</Text>
-                </View>
-
-                <View style={styles.receiptBody}>
-                    <View style={styles.infoRow}>
-                        <View style={styles.iconBox}>
-                            <User size={18} color="#666" />
+                <View style={styles.receiptWrapper}>
+                    {/* Hospital Branding */}
+                    <View style={styles.hospitalBranding}>
+                        <View style={styles.logoContainer}>
+                            {transaction.hospitals?.logo_url ? (
+                                <Text>Logo Placeholder</Text> // In real app, use Image
+                            ) : (
+                                <Building2 size={32} color="#0D2E33" />
+                            )}
                         </View>
-                        <View>
-                            <Text style={styles.label}>Patient</Text>
-                            <Text style={styles.value}>{transaction.patients?.full_name || 'Walk-in'}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                        <View style={styles.iconBox}>
-                            <Tag size={18} color="#666" />
-                        </View>
-                        <View>
-                            <Text style={styles.label}>Service</Text>
-                            <Text style={styles.value}>{transaction.revenue_items?.name}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                        <View style={styles.iconBox}>
-                            <Building2 size={18} color="#666" />
-                        </View>
-                        <View>
-                            <Text style={styles.label}>Hospital</Text>
-                            <Text style={styles.value}>{transaction.hospitals?.name || 'General Hospital'}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                        <View style={styles.iconBox}>
-                            <ReceiptIcon size={18} color="#666" />
-                        </View>
-                        <View>
-                            <Text style={styles.label}>Transaction ID</Text>
-                            <Text style={styles.value}>{transaction.id.split('-')[0].toUpperCase()}</Text>
-                        </View>
+                        <Text style={styles.hospitalNameDisplay}>{transaction.hospitals?.name || 'General Hospital'}</Text>
+                        <Text style={styles.hospitalAddressDisplay}>{transaction.hospitals?.address || 'Medical Center Address'}</Text>
                     </View>
 
                     <View style={styles.divider} />
 
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Subtotal</Text>
-                        <Text style={styles.summaryValue}>₦{transaction.amount.toLocaleString()}</Text>
+                    <View style={styles.successHeader}>
+                        <View style={styles.successBadge}>
+                            <CheckCircle2 size={32} color="#10B981" />
+                        </View>
+                        <Text style={styles.statusText}>Payment Confirmed</Text>
+                        <Text style={styles.amountText}>₦{transaction.amount.toLocaleString()}</Text>
+                        <Text style={styles.dateText}>{new Date(transaction.created_at).toLocaleString()}</Text>
                     </View>
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Service Charge</Text>
-                        <Text style={styles.summaryValue}>₦0.00</Text>
+
+                    <View style={styles.detailsBox}>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Patient</Text>
+                            <Text style={styles.detailValue}>{transaction.patients?.full_name || 'Walk-in'}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Service</Text>
+                            <Text style={styles.detailValue}>{transaction.revenue_items?.name}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Reference</Text>
+                            <Text style={styles.detailValue}>#{transaction.id.split('-')[0].toUpperCase()}</Text>
+                        </View>
                     </View>
-                    <View style={[styles.summaryRow, { marginTop: 12 }]}>
-                        <Text style={styles.totalLabel}>Total</Text>
+
+                    <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>Total Paid</Text>
                         <Text style={styles.totalValue}>₦{transaction.amount.toLocaleString()}</Text>
                     </View>
-                </View>
 
-                <View style={styles.securityNote}>
-                    <ShieldCheck size={16} color="#10B981" />
-                    <Text style={styles.securityText}>Verified by SwiftRev HERMS</Text>
+                    <View style={styles.footerBranding}>
+                        <View style={styles.swiftRevLine}>
+                            <Text style={styles.poweredBy}>Powered by</Text>
+                            <Text style={styles.swiftRevBrand}>SwiftRev HERMS</Text>
+                            <ShieldCheck size={14} color="#67B1A1" />
+                        </View>
+                        <Text style={styles.verificationNote}>Verified Digital Document</Text>
+                    </View>
                 </View>
 
                 <TouchableOpacity style={styles.downloadBtn}>
                     <Download size={20} color="#fff" />
                     <Text style={styles.downloadText}>Download PDF</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.downloadBtn, { backgroundColor: '#F3F4F6', marginTop: 12 }]} 
+                    onPress={handlePrint}
+                    disabled={printing}
+                >
+                    <Printer size={20} color="#000" />
+                    <Text style={[styles.downloadText, { color: '#000' }]}>
+                        {printing ? 'Connecting...' : 'Print to Thermal'}
+                    </Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>
@@ -170,7 +191,7 @@ export default function ReceiptDetail() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#F9FAFB',
     },
     loadingContainer: {
         flex: 1,
@@ -184,7 +205,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingTop: 60,
         paddingHorizontal: 24,
-        paddingBottom: 24,
+        paddingBottom: 16,
+        backgroundColor: '#fff',
     },
     backBtn: {
         padding: 8,
@@ -192,9 +214,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '900',
+        fontSize: 16,
+        fontWeight: '800',
         color: '#000',
+        letterSpacing: 0.5,
     },
     shareBtn: {
         padding: 8,
@@ -202,124 +225,152 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     content: {
-        padding: 24,
-        paddingBottom: 60,
+        padding: 20,
     },
-    successHeader: {
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    successBadge: {
-        width: 64,
-        height: 64,
+    receiptWrapper: {
+        backgroundColor: '#fff',
         borderRadius: 24,
-        backgroundColor: '#F0FDF4',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+        marginBottom: 24,
     },
-    statusText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#10B981',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 12,
-    },
-    amountText: {
-        fontSize: 48,
-        fontWeight: '900',
-        color: '#000',
-        letterSpacing: -2,
-        marginBottom: 8,
-    },
-    dateText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#9CA3AF',
-    },
-    receiptBody: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 32,
-        padding: 32,
-        marginBottom: 32,
-    },
-    infoRow: {
-        flexDirection: 'row',
+    hospitalBranding: {
         alignItems: 'center',
         marginBottom: 24,
     },
-    iconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
+    logoContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginBottom: 16,
     },
-    label: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#9CA3AF',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 2,
+    hospitalNameDisplay: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: '#0D2E33',
+        textAlign: 'center',
     },
-    value: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#000',
+    hospitalAddressDisplay: {
+        fontSize: 12,
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: 4,
     },
     divider: {
         height: 1,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: '#F3F4F6',
         marginVertical: 24,
-        borderStyle: 'dashed',
     },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    summaryLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6B7280',
-    },
-    summaryValue: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#000',
-    },
-    totalLabel: {
-        fontSize: 16,
-        fontWeight: '900',
-        color: '#000',
-    },
-    totalValue: {
-        fontSize: 20,
-        fontWeight: '900',
-        color: '#000',
-    },
-    securityNote: {
-        flexDirection: 'row',
+    successHeader: {
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        marginBottom: 40,
+        marginBottom: 32,
     },
-    securityText: {
-        fontSize: 12,
+    successBadge: {
+        marginBottom: 12,
+    },
+    statusText: {
+        fontSize: 11,
         fontWeight: '800',
         color: '#10B981',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        marginBottom: 8,
+    },
+    amountText: {
+        fontSize: 36,
+        fontWeight: '900',
+        color: '#000',
+        marginBottom: 4,
+    },
+    dateText: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        fontWeight: '600',
+    },
+    detailsBox: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 24,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    detailLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#9CA3AF',
+        textTransform: 'uppercase',
+    },
+    detailValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    totalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#0D2E33',
+        padding: 20,
+        borderRadius: 16,
+        marginBottom: 32,
+    },
+    totalLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#fff',
+        textTransform: 'uppercase',
+        opacity: 0.8,
+    },
+    totalValue: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: '#fff',
+    },
+    footerBranding: {
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+        paddingTop: 24,
+    },
+    swiftRevLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
+    },
+    poweredBy: {
+        fontSize: 10,
+        color: '#9CA3AF',
+        fontWeight: '600',
+    },
+    swiftRevBrand: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#0D2E33',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    verificationNote: {
+        fontSize: 9,
+        color: '#9CA3AF',
+        fontWeight: '700',
+        textTransform: 'uppercase',
     },
     downloadBtn: {
         backgroundColor: '#000',
-        height: 64,
-        borderRadius: 20,
+        height: 56,
+        borderRadius: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -327,8 +378,14 @@ const styles = StyleSheet.create({
     },
     downloadText: {
         color: '#fff',
-        fontSize: 18,
-        fontWeight: '900',
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
     },
     errorText: {
         fontSize: 16,
@@ -338,7 +395,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     backLink: {
-        color: '#3B82F6',
-        fontWeight: '700',
+        color: '#67B1A1',
+        fontWeight: '800',
     }
 });

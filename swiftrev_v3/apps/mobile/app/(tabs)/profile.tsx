@@ -7,7 +7,8 @@ import {
     ScrollView,
     TouchableOpacity,
     Image,
-    Alert
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import {
     User,
@@ -19,27 +20,46 @@ import {
     Bell,
     ChevronRight,
     Settings,
-    ShieldAlert
+    ShieldAlert,
+    Camera,
+    Upload
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import api from '../../src/services/api';
 import { securityService } from '../../src/services/SecurityService';
+import Logo from '../../src/components/Logo';
 
 export default function AgentProfile() {
     const router = useRouter();
     const { user, logout } = useAuthStore();
     const [stats, setStats] = useState<any>(null);
+    const [uploading, setUploading] = useState(false);
+    const [currentHospital, setCurrentHospital] = useState<any>(null);
+
+    const fetchStats = async () => {
+        try {
+            const res = await api.get(`/dashboard/agent?hospitalId=${user?.hospitalId}&agentId=${user?.id}`);
+            setStats(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchHospital = async () => {
+        try {
+            if (user?.hospitalId) {
+                const res = await api.get(`/hospitals/${user.hospitalId}`);
+                setCurrentHospital(res.data);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await api.get(`/dashboard/agent?hospitalId=${user?.hospitalId}&agentId=${user?.id}`);
-                setStats(res.data);
-            } catch (err) {
-                console.error(err);
-            }
-        };
         fetchStats();
+        fetchHospital();
     }, []);
 
     const [isBiometricSupported, setIsBiometricSupported] = useState(false);
@@ -69,16 +89,78 @@ export default function AgentProfile() {
         router.push('/notifications');
     };
 
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'We need access to your gallery to upload an avatar.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            uploadAvatar(result.assets[0].uri);
+        }
+    };
+
+    const uploadAvatar = async (uri: string) => {
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            const fileName = uri.split('/').pop();
+            const fileType = fileName?.split('.').pop();
+            
+            // @ts-ignore - FormData expects an object for files in React Native
+            formData.append('file', {
+                uri,
+                name: fileName,
+                type: `image/${fileType}`,
+            });
+
+            const res = await api.post(`/uploads/profile?type=user`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            const avatar_url = res.data.url;
+            await api.patch(`/users/${user?.id}`, { avatar_url });
+            
+            const { updateUser } = useAuthStore.getState();
+            await updateUser({ avatar_url });
+            
+            Alert.alert('Success', 'Profile picture updated successfully');
+        } catch (err) {
+            console.error(err);
+            Alert.alert('Error', 'Failed to upload profile picture');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <View style={styles.profileHeader}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase()}</Text>
-                    </View>
-                    <View>
+                    <TouchableOpacity style={styles.avatar} onPress={pickImage} disabled={uploading}>
+                        {user?.avatar_url ? (
+                            <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase()}</Text>
+                        )}
+                        <View style={styles.cameraIcon}>
+                            {uploading ? <ActivityIndicator size="small" color="#fff" /> : <Camera size={12} color="#fff" />}
+                        </View>
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.name}>{user?.email?.split('@')[0] || 'Agent'}</Text>
                         <Text style={styles.role}>Field Collection Agent</Text>
+                        <TouchableOpacity onPress={pickImage} style={{ marginTop: 4 }}>
+                            <Text style={styles.changeText}>Change Profile Picture</Text>
+                        </TouchableOpacity>
                     </View>
                     <TouchableOpacity onPress={handleNotifications} style={styles.iconBtn}>
                         <Bell size={20} color="#000" />
@@ -89,7 +171,7 @@ export default function AgentProfile() {
                     <Building2 size={24} color="#67B1A1" />
                     <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={styles.hospitalLabel}>Affiliated Hospital</Text>
-                        <Text style={styles.hospitalName}>{user?.hospitalId || 'Main General Hospital'}</Text>
+                        <Text style={styles.hospitalName}>{currentHospital?.name || 'Loading...'}</Text>
                     </View>
                 </View>
             </View>
@@ -136,7 +218,8 @@ export default function AgentProfile() {
             </TouchableOpacity>
 
             <View style={styles.footer}>
-                <Text style={styles.versionText}>SwiftRev v3.0.0</Text>
+                <Logo size="sm" style={{ opacity: 0.5, marginBottom: 8 }} />
+                <Text style={styles.versionText}>v3.0.0</Text>
                 <Text style={styles.footerText}>Secure Hospital Revenue Management</Text>
             </View>
         </ScrollView>
@@ -197,6 +280,29 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#9CA3AF',
+    },
+    changeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#67B1A1',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 24,
+    },
+    cameraIcon: {
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+        backgroundColor: '#67B1A1',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
     },
     iconBtn: {
         marginLeft: 'auto',

@@ -68,11 +68,11 @@ class OfflineStorage {
     }
 
     // Cache helpers
-    async updateCache(key: 'patients' | 'revenue_items' | 'history', items: any[]) {
+    async updateCache(key: 'patients' | 'revenue_items' | 'history' | 'departments', items: any[]) {
         await this.put(key, items);
     }
 
-    async getAll(key: 'patients' | 'revenue_items' | 'history'): Promise<any[]> {
+    async getAll(key: 'patients' | 'revenue_items' | 'history' | 'departments'): Promise<any[]> {
         return (await this.get(key)) || [];
     }
 }

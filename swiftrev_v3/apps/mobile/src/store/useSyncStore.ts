@@ -9,6 +9,8 @@ interface SyncState {
     init: () => void;
     addToQueue: (type: 'patient' | 'transaction', data: any) => Promise<void>;
     syncNow: () => Promise<void>;
+    fetchDepartments: (hospitalId: string) => Promise<any[]>;
+    fetchRevenueItems: (hospitalId: string) => Promise<any[]>;
 }
 
 export const useSyncStore = create<SyncState>((set) => ({
@@ -34,5 +36,13 @@ export const useSyncStore = create<SyncState>((set) => ({
 
     syncNow: async () => {
         await syncManager.syncPending();
+    },
+
+    fetchDepartments: async (hospitalId) => {
+        return await syncManager.fetchAndCacheDepartments(hospitalId);
+    },
+
+    fetchRevenueItems: async (hospitalId) => {
+        return await syncManager.fetchAndCacheRevenueItems(hospitalId);
     },
 }));

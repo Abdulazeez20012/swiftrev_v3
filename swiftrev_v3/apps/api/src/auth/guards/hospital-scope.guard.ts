@@ -1,3 +1,4 @@
+/** Hospital Scope Guard - Re-triggering build for safety */
 import {
     Injectable,
     CanActivate,
@@ -24,15 +25,29 @@ export class HospitalScopeGuard implements CanActivate {
         const user = request.user;
 
         if (!user) {
-            // JwtAuthGuard should have rejected before this, but be safe
+            console.error('HospitalScopeGuard: No user found on request');
             throw new ForbiddenException('Unauthenticated');
         }
 
+        const role = user.role?.toLowerCase();
+
         // super_admin can query any hospital
-        if (user.role === 'super_admin') {
-            const requestedHospitalId = request.query?.hospitalId || request.body?.hospitalId || request.body?.hospital_id;
+        if (role === 'super_admin') {
+            let requestedHospitalId = request.query?.hospitalId || request.body?.hospitalId || request.body?.hospital_id;
+            
+            // Clean up common "empty" values sent by clients
+            if (requestedHospitalId === 'null' || requestedHospitalId === 'undefined' || requestedHospitalId === '') {
+                requestedHospitalId = null;
+            }
+
             if (requestedHospitalId) {
                 request.user.hospitalId = requestedHospitalId;
+                console.log(`HospitalScopeGuard: SuperAdmin ${user.email} scoped to hospital: ${requestedHospitalId}`);
+            } else if (user.hospitalId) {
+                // Fallback to the ID in the JWT if no query param
+                console.log(`HospitalScopeGuard: SuperAdmin ${user.email} using JWT hospitalId: ${user.hospitalId}`);
+            } else {
+                console.log(`HospitalScopeGuard: SuperAdmin ${user.email} has no hospitalId scope.`);
             }
             return true;
         }
@@ -40,16 +55,17 @@ export class HospitalScopeGuard implements CanActivate {
         const jwtHospitalId: string | undefined = user.hospitalId;
 
         if (!jwtHospitalId) {
+            const debugInfo = `Role: ${user.role}, HospitalId: ${user.hospitalId}, Email: ${user.email}`;
+            console.warn(`HospitalScopeGuard: Access denied. ${debugInfo}`);
             throw new ForbiddenException(
-                'Your account is not linked to a hospital. Please contact an administrator.',
+                `Your account is not linked to a hospital. (${debugInfo})`,
             );
         }
 
-        // Silently override whatever hospitalId the client sent — the JWT is the truth
-        request.query = { ...request.query, hospitalId: jwtHospitalId };
-
-        // Also expose on the user object for convenience in controllers
-        request.user.hospitalId = jwtHospitalId;
+        // Expose on the user object for convenience in controllers (enforced tenant isolation)
+        if (jwtHospitalId) {
+            request.user.hospitalId = jwtHospitalId;
+        }
 
         return true;
     }

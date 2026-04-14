@@ -296,6 +296,7 @@ const TopUpModule: React.FC = () => {
             await api.post('/wallets/top-up', {
                 hospitalId: selectedHospital,
                 amount: parseFloat(amount),
+                agentId: selectedAgent || undefined
             });
             await loadHistory();
             setAmount('');

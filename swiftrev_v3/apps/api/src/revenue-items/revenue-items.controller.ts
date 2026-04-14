@@ -26,8 +26,10 @@ export class RevenueItemsController {
     findAll(
         @CurrentUser() user: any,
         @Query('departmentId') departmentId?: string,
+        @Query('hospitalId') hospitalId?: string,
     ) {
-        return this.revenueItemsService.findAllByHospital(user.hospitalId, departmentId);
+        const targetDeptId = departmentId === 'undefined' ? undefined : departmentId;
+        return this.revenueItemsService.findAllByHospital(user.hospitalId, targetDeptId);
     }
 
     @Get(':id')

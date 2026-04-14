@@ -11,24 +11,31 @@ export class UsersService {
     async create(createUserDto: CreateUserDto) {
         const supabase = this.supabaseService.getClient();
 
-        // Check if user already exists
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', createUserDto.email)
-            .single();
+        // 1. Create user in Supabase Auth first (using service role)
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+            email: createUserDto.email,
+            password: createUserDto.password,
+            email_confirm: true,
+            user_metadata: {
+                full_name: createUserDto.fullName,
+            }
+        });
 
-        if (existingUser) {
-            throw new ConflictException('User with this email already exists');
+        if (authError) {
+            // If user already exists in Auth, we might still want to create the public profile 
+            // but for now we follow strict invite flow.
+            if (authError.message.includes('already registered')) {
+                throw new ConflictException('User with this email is already registered in Auth');
+            }
+            throw new BadRequestException(`Auth Error: ${authError.message}`);
         }
 
-        const passwordHash = await bcrypt.hash(createUserDto.password, 10);
-
+        // 2. Insert into our public users table
         const { data, error } = await supabase
             .from('users')
             .insert([{
+                id: authUser.user.id, // Link to the Auth ID
                 email: createUserDto.email,
-                password_hash: passwordHash,
                 hospital_id: createUserDto.hospitalId || null,
                 role_id: createUserDto.roleId,
                 full_name: createUserDto.fullName,
@@ -37,7 +44,9 @@ export class UsersService {
             .single();
 
         if (error) {
-            throw new BadRequestException(error.message);
+            // Rollback Auth user if public profile creation fails
+            await supabase.auth.admin.deleteUser(authUser.user.id);
+            throw new BadRequestException(`Database Error: ${error.message}`);
         }
 
         return data;
@@ -98,6 +107,7 @@ export class UsersService {
             role_id: updateUserDto.roleId,
             full_name: updateUserDto.fullName,
             status: updateUserDto.status,
+            avatar_url: updateUserDto.avatar_url,
             updated_at: new Date().toISOString(),
         };
 

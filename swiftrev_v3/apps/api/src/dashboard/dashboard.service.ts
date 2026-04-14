@@ -15,7 +15,8 @@ export class DashboardService {
             .eq('hospital_id', hospitalId)
             .eq('onboarded_by', agentId);
 
-        if (pError) throw new BadRequestException(pError.message);
+        if (pError) throw new BadRequestException(`Failed to fetch patients: ${pError.message}`);
+        const pCount = patientsCount || 0;
 
         // 2. Get Revenue Total and Recent Transactions
         const { data: transactions, error: tError } = await supabase
@@ -25,33 +26,73 @@ export class DashboardService {
             .eq('agent_id', agentId)
             .order('created_at', { ascending: false });
 
-        if (tError) throw new BadRequestException(tError.message);
+        if (tError) throw new BadRequestException(`Failed to fetch transactions: ${tError.message}`);
+        if (!transactions || transactions.length === 0) {
+            return { patientsCount: pCount, revenueTotal: 0, balance: 0, performance: 0, recentActivity: [] };
+        }
 
         const revenueTotal = transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
-        // 3. Get Agent Wallet/Balance
-        // We define 'Balance' as the total CASH collected by the agent that belongs to the hospital.
-        const balance = transactions
+        // 3. Get Agent Wallet/Balance (Operating Float)
+        const { data: walletData } = await supabase
+            .from('wallets')
+            .select('total_balance')
+            .eq('hospital_id', hospitalId)
+            .eq('user_id', agentId)
+            .maybeSingle();
+        
+        const availableFloat = walletData ? Number(walletData.total_balance || 0) : 0;
+
+        // 4. Calculate Categorized Earnings
+        const cashHeld = transactions
             .filter(tx => tx.payment_method === 'cash' && tx.status === 'completed')
             .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
-        // 4. Calculate Performance (e.g., % of a weekly goal like 50,000)
+        const posTotal = transactions
+            .filter(tx => (tx.payment_method === 'card' || tx.payment_method === 'pos') && tx.status === 'completed')
+            .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+        
+        const transferTotal = transactions
+            .filter(tx => tx.payment_method === 'transfer' && tx.status === 'completed')
+            .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+        // 5. Calculate Performance (e.g., % of a weekly goal)
         const weeklyGoal = 100000;
         const performance = Math.min(Math.round((revenueTotal / weeklyGoal) * 100), 100);
 
-        // 5. Format Recent Activity
+        // 5. Get Departments Count
+        const { count: deptsCount } = await supabase
+            .from('departments')
+            .select('*', { count: 'exact', head: true })
+            .eq('hospital_id', hospitalId);
+
+        // 6. Get Revenue Items Count
+        const { count: itemsCount } = await supabase
+            .from('revenue_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('hospital_id', hospitalId);
+
+        // 7. Format Recent Activity
         const recentActivity = transactions.slice(0, 5).map(tx => ({
             title: `${tx.revenue_items?.name || 'Service'} - ${tx.patients?.full_name || 'Anonymous'}`,
             time: this.formatTime(tx.created_at),
-            status: tx.status.toUpperCase(),
+            status: (tx.status || 'unknown').toUpperCase(),
         }));
 
+        console.log(`DashboardService.getAgentStats: Success for agent ${agentId}`);
+
         return {
-            patientsCount: patientsCount || 0,
-            revenueTotal,
-            balance,
-            performance,
-            recentActivity,
+            patientsCount: pCount,
+            revenueTotal: revenueTotal || 0,
+            balance: availableFloat || 0,
+            cashHeld: cashHeld || 0,
+            posTotal: posTotal || 0,
+            transferTotal: transferTotal || 0,
+            availableFloat: availableFloat || 0,
+            performance: performance || 0,
+            recentActivity: recentActivity || [],
+            departmentsCount: deptsCount || 0,
+            revenueItemsCount: itemsCount || 0,
         };
     }
 

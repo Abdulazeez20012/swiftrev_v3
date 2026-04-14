@@ -11,24 +11,14 @@ export class WalletsService {
             .from('wallets')
             .select('*')
             .eq('hospital_id', hospitalId)
-            .maybeSingle();
+            .order('wallet_type', { ascending: false }); // Hospital first
 
         if (error) {
-            console.error(`[WalletsService] Error fetching wallet for hospital ${hospitalId}:`, error);
+            console.error(`[WalletsService] Error fetching wallets for hospital ${hospitalId}:`, error);
             throw new BadRequestException(error.message);
         }
 
-        if (!data) {
-            // Return a default virtual wallet if none exists yet
-            return {
-                hospital_id: hospitalId,
-                balance: 0,
-                status: 'active',
-                created_at: new Date().toISOString()
-            };
-        }
-
-        return data;
+        return data || [];
     }
 
     async getTransactionHistory(hospitalId: string) {
@@ -46,17 +36,18 @@ export class WalletsService {
         return data;
     }
 
-    async topUp(hospitalId: string, amount: number, userId: string) {
+    async topUp(hospitalId: string, amount: number, agentId?: string) {
         const supabase = this.supabaseService.getClient();
         const { data, error } = await supabase.rpc('update_wallet_balance', {
             h_id: hospitalId,
-            amt: amount
+            amt: amount,
+            u_id: agentId || null
         });
 
         if (error) {
             throw new BadRequestException(error.message);
         }
 
-        return { message: 'Wallet topped up successfully', amount };
+        return { message: 'Wallet topped up successfully', amount, agentId };
     }
 }

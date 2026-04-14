@@ -22,7 +22,16 @@ export class DepartmentsController {
 
     @Get()
     @Permissions('departments:read', 'departments:all')
-    findAll(@CurrentUser() user: any) {
+    async findAll(@CurrentUser() user: any) {
+        console.log(`DepartmentsController.findAll: user=${user.email}, hospitalId=${user.hospitalId}, role=${user.role}`);
+        
+        if (user.role?.toLowerCase() === 'super_admin' && !user.hospitalId) {
+            // If super_admin has no hospital context, return all departments
+            // or we could return departments for the first hospital.
+            // For now, let's try to return ALL if they are super_admin.
+            return this.departmentsService.findAll();
+        }
+        
         return this.departmentsService.findAllByHospital(user.hospitalId);
     }
 

@@ -27,8 +27,10 @@ export class TransactionsController {
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
         @Query('agentId') agentId?: string,
+        @Query('hospitalId') hospitalId?: string,
     ) {
-        return this.transactionsService.findAllByHospital(user.hospitalId, status, paymentMethod, limit, offset, agentId);
+        const targetAgentId = agentId === 'undefined' ? undefined : agentId;
+        return this.transactionsService.findAllByHospital(user.hospitalId, status, paymentMethod, limit, offset, targetAgentId);
     }
 
     @Get(':id')

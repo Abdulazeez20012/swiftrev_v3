@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Mail, Shield, MoreVertical, UserCheck, ShieldAlert, RefreshCw, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import InviteUserModal from '../components/InviteUserModal';
 
 interface User {
     id: string;
@@ -21,6 +22,7 @@ export const UserManagement: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
     const fetchUsers = React.useCallback(async () => {
         setLoading(true);
@@ -67,11 +69,20 @@ export const UserManagement: React.FC = () => {
                     >
                         <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
                     </button>
-                    <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm">
+                    <button
+                        onClick={() => setIsInviteModalOpen(true)}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
+                    >
                         <Plus size={18} /> Invite User
                     </button>
                 </div>
             </div>
+
+            <InviteUserModal
+                isOpen={isInviteModalOpen}
+                onClose={() => setIsInviteModalOpen(false)}
+                onSuccess={fetchUsers}
+            />
 
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
@@ -153,10 +164,35 @@ export const UserManagement: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-muted-foreground">{lastSeen}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="p-2 text-muted-foreground hover:text-foreground">
-                                                    <MoreVertical size={18} />
-                                                </button>
+                                            <td className="px-6 py-4 text-right relative">
+                                                <div className="flex justify-end gap-2">
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (window.confirm(`Are you sure you want to ${active ? 'suspend' : 'activate'} this user?`)) {
+                                                                api.patch(`/users/${user.id}`, { status: active ? 'suspended' : 'active' })
+                                                                    .then(() => fetchUsers())
+                                                                    .catch(err => alert(err.message));
+                                                            }
+                                                        }}
+                                                        className="p-2 text-muted-foreground hover:text-amber-600 transition-colors"
+                                                        title={active ? "Suspend User" : "Activate User"}
+                                                    >
+                                                        <ShieldAlert size={18} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (window.confirm('Are you sure you want to DELETE this user? This cannot be undone.')) {
+                                                                api.delete(`/users/${user.id}`)
+                                                                    .then(() => fetchUsers())
+                                                                    .catch(err => alert(err.message));
+                                                            }
+                                                        }}
+                                                        className="p-2 text-muted-foreground hover:text-rose-600 transition-colors"
+                                                        title="Delete User"
+                                                    >
+                                                        <MoreVertical size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );

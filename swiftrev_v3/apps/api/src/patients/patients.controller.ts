@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -27,7 +27,10 @@ export class PatientsController {
      */
     @Get()
     @Permissions('patients:read', 'patients:all')
-    findAll(@CurrentUser() user: any) {
+    findAll(
+        @CurrentUser() user: any,
+        @Query('hospitalId') hospitalId?: string,
+    ) {
         return this.patientsService.findAllByHospital(user.hospitalId);
     }
 

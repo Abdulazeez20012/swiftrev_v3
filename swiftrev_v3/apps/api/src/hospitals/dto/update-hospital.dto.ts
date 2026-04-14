@@ -6,4 +6,8 @@ export class UpdateHospitalDto extends PartialType(CreateHospitalDto) {
     @IsString()
     @IsOptional()
     status?: string;
+
+    @IsString()
+    @IsOptional()
+    logo_url?: string;
 }

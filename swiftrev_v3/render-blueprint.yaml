@@ -30,6 +30,8 @@ services:
           type: web
           name: swiftrev-ai
           property: url
+      - key: SENTRY_DSN
+        sync: false
 
   # 2. Python AI Service
   - type: web

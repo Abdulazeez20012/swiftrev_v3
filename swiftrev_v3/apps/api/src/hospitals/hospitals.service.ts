@@ -63,6 +63,7 @@ export class HospitalsService {
                 address: updateHospitalDto.address,
                 contact_info: updateHospitalDto.contactInfo,
                 status: updateHospitalDto.status,
+                logo_url: updateHospitalDto.logo_url,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', id)

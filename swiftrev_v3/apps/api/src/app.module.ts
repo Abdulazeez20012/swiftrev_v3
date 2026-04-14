@@ -21,10 +21,13 @@ import { MlModule } from './common/ml/ml.module';
 import { InsuranceProvidersModule } from './insurance-providers/insurance-providers.module';
 import { ClaimsModule } from './claims/claims.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { Request, Response, NextFunction } from 'express';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -47,6 +50,7 @@ import { Request, Response, NextFunction } from 'express';
     InsuranceProvidersModule,
     ClaimsModule,
     DashboardModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

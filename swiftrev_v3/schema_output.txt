@@ -1,0 +1,4 @@
+--- HOSPITALS COLUMNS ---
+id, name, address, contact_info, status, created_at, updated_at
+
+--- WALLETS COLUMNS ---

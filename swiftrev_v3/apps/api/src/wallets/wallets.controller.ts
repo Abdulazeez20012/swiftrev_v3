@@ -31,9 +31,9 @@ export class WalletsController {
 
     @Post('top-up')
     @Permissions('hospitals:manage') // Only Super Admin/High privilege can top up
-    topUp(@Body() body: { hospitalId: string, amount: number }, @CurrentUser() user: any) {
+    topUp(@Body() body: { hospitalId: string, amount: number, agentId?: string }, @CurrentUser() user: any) {
         // Enforce hospitalId if not super_admin
         const targetHospitalId = user.role === 'super_admin' ? body.hospitalId : user.hospitalId;
-        return this.walletsService.topUp(targetHospitalId, body.amount, user.userId);
+        return this.walletsService.topUp(targetHospitalId, body.amount, body.agentId);
     }
 }

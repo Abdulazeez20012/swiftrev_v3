@@ -22,14 +22,10 @@ import {
     DollarSign,
     ArrowLeftRight,
     UserCog,
-    FileText,
+    FileText
 } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { cn } from '../lib/utils';
+import Logo from './Logo';
 
 const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
     <Link
@@ -58,26 +54,41 @@ const MainLayout = () => {
     const [syncStatus, setSyncStatus] = useState<'online' | 'offline' | 'syncing'>('online');
     const [pendingCount, setPendingCount] = useState(0);
 
+    const [currentHospital, setCurrentHospital] = useState<any>(null);
+    const [fullProfile, setFullProfile] = useState<any>(null);
+
     useEffect(() => {
         syncManager.addListener((status, count) => {
             setSyncStatus(status);
             setPendingCount(count);
         });
 
-        if (user?.role === 'super_admin') {
-            const fetchHospitals = async () => {
-                try {
+        const fetchInitialData = async () => {
+            try {
+                // Fetch current hospital
+                if (user?.hospitalId) {
+                    const hRes = await api.get(`/hospitals/${user.hospitalId}`);
+                    setCurrentHospital(hRes.data);
+                }
+
+                // Fetch full profile
+                if (user?.id) {
+                    const uRes = await api.get(`/users/${user.id}`);
+                    setFullProfile(uRes.data);
+                }
+
+                if (user?.role === 'super_admin') {
                     const response = await api.get('/hospitals');
                     setHospitals(response.data);
-                } catch (error) {
-                    console.error('Failed to fetch hospitals', error);
                 }
-            };
-            fetchHospitals();
-        }
+            } catch (error) {
+                console.error('Failed to fetch initial layout data', error);
+            }
+        };
+        fetchInitialData();
     }, [user]);
 
-    const currentHospitalName = hospitals.find(h => h.id === user?.hospitalId)?.name || "St. Joseph's Medical Center";
+    const currentHospitalName = currentHospital?.name || hospitals.find(h => h.id === user?.hospitalId)?.name || "SwiftRev Medical";
 
     const role = user?.role || '';
     const isSuperAdmin = role === 'super_admin';
@@ -144,14 +155,11 @@ const MainLayout = () => {
                 sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="p-6">
-                    <div className="flex items-center gap-3 mb-8">
-                        <img
-                            src="/logo.jpg"
-                            alt="SwiftRev Logo"
-                            className="h-10 w-auto rounded-lg shadow-sm"
-                        />
-                        <div className="hidden group-hover:block transition-all duration-300">
-                            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest leading-none">Management System</p>
+                    <div className="flex flex-col items-center gap-3 mb-8 px-2 py-4 bg-secondary/20 rounded-2xl border border-border/50">
+                        <Logo size="lg" url={currentHospital?.logo_url} />
+                        <div className="text-center">
+                            <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] leading-none mb-1">SwiftRev</p>
+                            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-widest leading-none">Management System</p>
                         </div>
                     </div>
 
@@ -170,11 +178,15 @@ const MainLayout = () => {
 
                 <div className="absolute bottom-0 w-full p-6 border-t border-border bg-card/80 backdrop-blur-md">
                     <div className="flex items-center gap-3 mb-6 p-2 rounded-xl bg-secondary/50 border border-border/50">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-xs ring-2 ring-background">
-                            {user?.email?.charAt(0).toUpperCase()}
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-xs ring-2 ring-background overflow-hidden">
+                            {fullProfile?.avatar_url ? (
+                                <img src={fullProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                user?.email?.charAt(0).toUpperCase()
+                            )}
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-sm font-bold truncate text-foreground">{user?.email?.split('@')[0]}</p>
+                            <p className="text-sm font-bold truncate text-foreground">{fullProfile?.full_name || user?.email?.split('@')[0]}</p>
                             <p className="text-[10px] font-bold text-primary uppercase tracking-wider truncate">{user?.role?.replace('_', ' ')}</p>
                         </div>
                     </div>

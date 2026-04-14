@@ -22,7 +22,9 @@ import {
     Tag,
     Layers,
     ShieldCheck,
-    ArrowLeft
+    ArrowLeft,
+    Plus,
+    PlusCircle
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
@@ -32,7 +34,7 @@ import * as Location from 'expo-location';
 
 export default function QuickCollectionModal({ visible, onClose, onSuccess, preSelectedPatient }: any) {
     const { user } = useAuthStore();
-    const { status, addToQueue, init } = useSyncStore();
+    const { status, addToQueue, init, fetchDepartments: fetchDeptsWrapper, fetchRevenueItems: fetchItemsWrapper } = useSyncStore();
     const [step, setStep] = useState(1); // 1=patient, 2=department, 3=service, 4=confirm, 5=success
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -46,13 +48,19 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess, preS
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [paymentMethod, setPaymentMethod] = useState('cash');
 
+    // Registration & Wallet
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [regForm, setRegForm] = useState({ fullName: '', phoneNumber: '', type: 'regular' });
+    const [walletBalance, setWalletBalance] = useState(0);
+
     useEffect(() => {
         init();
     }, []);
 
     useEffect(() => {
         if (visible) {
-            fetchAll();
+            fetchData();
+            fetchBalance();
             if (preSelectedPatient) {
                 setSelectedPatient(preSelectedPatient);
                 setStep(2);
@@ -63,38 +71,47 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess, preS
             setSelectedDept(null);
             setSelectedItem(null);
             setSearchTerm('');
+            setIsRegistering(false);
+            setRegForm({ fullName: '', phoneNumber: '', type: 'regular' });
         }
     }, [visible, preSelectedPatient]);
 
-    const fetchAll = async () => {
+    const fetchBalance = async () => {
         try {
-            if (status === 'online') {
-                const [pRes, iRes, dRes] = await Promise.all([
-                    api.get(`/patients?hospitalId=${user?.hospitalId}`),
-                    api.get(`/revenue-items?hospitalId=${user?.hospitalId}`),
-                    api.get(`/departments?hospitalId=${user?.hospitalId}`),
-                ]);
-                setPatients(pRes.data);
-                setRevenueItems(iRes.data);
-                setDepartments(dRes.data);
-                await offlineStorage.updateCache('patients', pRes.data);
-                await offlineStorage.updateCache('revenue_items', iRes.data);
-            } else {
-                const [pCache, iCache] = await Promise.all([
-                    offlineStorage.getAll('patients'),
-                    offlineStorage.getAll('revenue_items'),
-                ]);
-                setPatients(pCache);
-                setRevenueItems(iCache);
-                setDepartments([]);
-            }
+            const res = await api.get(`/dashboard/agent?hospitalId=${user?.hospitalId}&agentId=${user?.id}`);
+            setWalletBalance(res.data.balance || 0);
         } catch (err) {
-            const [pCache, iCache] = await Promise.all([
-                offlineStorage.getAll('patients'),
-                offlineStorage.getAll('revenue_items'),
+            console.error('Failed to fetch balance', err);
+        }
+    };
+
+    const fetchData = async () => {
+        if (!user?.hospitalId) return;
+        setLoading(true);
+        try {
+            // Fetch patients (caching handled manually here as it's more dynamic)
+            if (status === 'online') {
+                const pRes = await api.get(`/patients?hospitalId=${user?.hospitalId}`).catch(() => null);
+                const pData = pRes?.data || [];
+                setPatients(pData);
+                if (pData.length) await offlineStorage.updateCache('patients', pData);
+            } else {
+                const pCache = await offlineStorage.getAll('patients');
+                setPatients(pCache);
+            }
+
+            // Fetch departments and items using the new centralized sync methods
+            const [depts, items] = await Promise.all([
+                fetchDeptsWrapper(user.hospitalId),
+                fetchItemsWrapper(user.hospitalId)
             ]);
-            setPatients(pCache);
-            setRevenueItems(iCache);
+
+            setDepartments(depts);
+            setRevenueItems(items);
+        } catch (err: any) {
+            console.error('QuickCollection fetch error', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -189,44 +206,117 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess, preS
                     {/* STEP 1: Patient Selection */}
                     {step === 1 && (
                         <View style={{ flex: 1 }}>
-                            <View style={styles.searchBar}>
-                                <Search size={18} color="#9CA3AF" />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Search patients..."
-                                    value={searchTerm}
-                                    onChangeText={setSearchTerm}
-                                    placeholderTextColor="#9CA3AF"
-                                />
+                            <View style={styles.listHeader}>
+                                <Text style={styles.listHeaderText}>PATIENT LIST</Text>
+                                <TouchableOpacity 
+                                    style={styles.newPatientBtnSmall}
+                                    onPress={() => setIsRegistering(true)}
+                                >
+                                    <Plus size={14} color="#67B1A1" />
+                                    <Text style={styles.newPatientBtnSmallText}>Register New</Text>
+                                </TouchableOpacity>
                             </View>
-                            <FlatList
-                                data={patients.filter(p => p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))}
-                                keyExtractor={(item) => item.id}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity
-                                        style={styles.listItem}
-                                        onPress={() => { setSelectedPatient(item); setStep(2); setSearchTerm(''); }}
-                                    >
-                                        <View style={styles.avatar}>
-                                            <Text style={styles.avatarText}>{item.full_name?.charAt(0)}</Text>
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.itemName}>{item.full_name}</Text>
-                                            <View style={styles.itemSubRow}>
-                                                <Text style={styles.itemSub}>{item.phone_number || 'No phone'}</Text>
-                                                {isNhisPatient(item) && (
-                                                    <View style={styles.nhisBadge}>
-                                                        <ShieldCheck size={10} color="#3B82F6" />
-                                                        <Text style={styles.nhisBadgeText}>{item.patient_type?.toUpperCase()}</Text>
-                                                    </View>
-                                                )}
+
+                            {isRegistering ? (
+                                <View style={styles.regForm}>
+                                    <Text style={styles.regTitle}>Quick Registration</Text>
+                                    <TextInput 
+                                        style={styles.regInput} 
+                                        placeholder="Full Name" 
+                                        value={regForm.fullName}
+                                        onChangeText={t => setRegForm({...regForm, fullName: t})}
+                                        placeholderTextColor="#9CA3AF"
+                                    />
+                                    <TextInput 
+                                        style={styles.regInput} 
+                                        placeholder="Phone Number" 
+                                        keyboardType="phone-pad"
+                                        value={regForm.phoneNumber}
+                                        onChangeText={t => setRegForm({...regForm, phoneNumber: t})}
+                                        placeholderTextColor="#9CA3AF"
+                                    />
+                                    <View style={styles.typeTabs}>
+                                        {['regular', 'nhis'].map(t => (
+                                            <TouchableOpacity 
+                                                key={t}
+                                                onPress={() => setRegForm({...regForm, type: t})}
+                                                style={[styles.typeTab, regForm.type === t && styles.typeTabActive]}
+                                            >
+                                                <Text style={[styles.typeTabText, regForm.type === t && styles.typeTabTextActive]}>
+                                                    {t.toUpperCase()}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                    <View style={styles.regActions}>
+                                        <TouchableOpacity style={styles.regCancel} onPress={() => setIsRegistering(false)}>
+                                            <Text style={styles.regCancelText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={styles.regSubmit} 
+                                            onPress={async () => {
+                                                if (!regForm.fullName || !regForm.phoneNumber) return Alert.alert('Missing Info', 'Name and phone required.');
+                                                const tempId = `temp-${Date.now()}`;
+                                                const newPatient = { 
+                                                    id: tempId, 
+                                                    full_name: regForm.fullName, 
+                                                    phone_number: regForm.phoneNumber, 
+                                                    patient_type: regForm.type 
+                                                };
+                                                await addToQueue('patient', {
+                                                    hospitalId: user?.hospitalId,
+                                                    fullName: regForm.fullName,
+                                                    phoneNumber: regForm.phoneNumber,
+                                                    patientType: regForm.type,
+                                                    onboardedBy: user?.id,
+                                                    offlineId: tempId
+                                                });
+                                                setSelectedPatient(newPatient);
+                                                setIsRegistering(false);
+                                                setStep(2);
+                                            }}
+                                        >
+                                            <Text style={styles.regSubmitText}>Register & Continue</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ) : (
+                                <FlatList
+                                    data={patients.filter(p => p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))}
+                                    keyExtractor={(item) => item.id}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity
+                                            style={styles.listItem}
+                                            onPress={() => { setSelectedPatient(item); setStep(2); setSearchTerm(''); }}
+                                        >
+                                            <View style={styles.avatar}>
+                                                <Text style={styles.avatarText}>{item.full_name?.charAt(0)}</Text>
                                             </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.itemName}>{item.full_name}</Text>
+                                                <View style={styles.itemSubRow}>
+                                                    <Text style={styles.itemSub}>{item.phone_number || 'No phone'}</Text>
+                                                    {isNhisPatient(item) && (
+                                                        <View style={styles.nhisBadge}>
+                                                            <ShieldCheck size={10} color="#3B82F6" />
+                                                            <Text style={styles.nhisBadgeText}>{item.patient_type?.toUpperCase()}</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </View>
+                                            <ChevronRight size={18} color="#E5E7EB" />
+                                        </TouchableOpacity>
+                                    )}
+                                    ListEmptyComponent={
+                                        <View style={styles.emptyContainer}>
+                                            <Text style={styles.empty}>No patients found</Text>
+                                            <TouchableOpacity style={styles.regButton} onPress={() => setIsRegistering(true)}>
+                                                <Text style={styles.regButtonText}>Register "{searchTerm}"</Text>
+                                            </TouchableOpacity>
                                         </View>
-                                        <ChevronRight size={18} color="#E5E7EB" />
-                                    </TouchableOpacity>
-                                )}
-                                ListEmptyComponent={<Text style={styles.empty}>No patients found</Text>}
-                            />
+                                    }
+                                />
+                            )}
                         </View>
                     )}
 
@@ -352,6 +442,18 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess, preS
                                 )}
                             </View>
 
+                            <View style={styles.walletGuard}>
+                                <View style={styles.walletGuardInfo}>
+                                    <Wallet size={16} color={walletBalance < getEffectiveAmount(selectedItem, selectedPatient) ? "#EF4444" : "#67B1A1"} />
+                                    <Text style={[styles.walletGuardText, walletBalance < getEffectiveAmount(selectedItem, selectedPatient) && { color: "#EF4444" }]}>
+                                        Your Operating Float: ₦{walletBalance.toLocaleString()}
+                                    </Text>
+                                </View>
+                                {walletBalance < getEffectiveAmount(selectedItem, selectedPatient) && (
+                                    <Text style={styles.insufficientText}>⚠️ Insufficient float to authorize this service.</Text>
+                                )}
+                            </View>
+
                             <Text style={styles.sectionLabel}>PAYMENT METHOD</Text>
                             <View style={styles.paymentMethods}>
                                 {[
@@ -373,9 +475,9 @@ export default function QuickCollectionModal({ visible, onClose, onSuccess, preS
                             </View>
 
                             <TouchableOpacity
-                                style={styles.confirmBtn}
+                                style={[styles.confirmBtn, walletBalance < getEffectiveAmount(selectedItem, selectedPatient) && styles.confirmBtnDisabled]}
                                 onPress={handleConfirm}
-                                disabled={loading}
+                                disabled={loading || walletBalance < getEffectiveAmount(selectedItem, selectedPatient)}
                             >
                                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Confirm & Collect</Text>}
                             </TouchableOpacity>
@@ -481,4 +583,30 @@ const styles = StyleSheet.create({
     success: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 40 },
     successTitle: { fontSize: 24, fontWeight: '900', color: '#000', marginTop: 24, marginBottom: 8 },
     successSub: { fontSize: 14, fontWeight: '600', color: '#9CA3AF', textAlign: 'center', marginBottom: 40, paddingHorizontal: 24 },
+    // New Styles
+    listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    listHeaderText: { fontSize: 11, fontWeight: '900', color: '#9CA3AF', letterSpacing: 1 },
+    newPatientBtnSmall: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+    newPatientBtnSmallText: { fontSize: 12, fontWeight: '800', color: '#67B1A1' },
+    regForm: { backgroundColor: '#F9FAFB', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F3F4F6' },
+    regTitle: { fontSize: 18, fontWeight: '900', color: '#000', marginBottom: 16 },
+    regInput: { backgroundColor: '#fff', height: 52, borderRadius: 12, paddingHorizontal: 16, fontSize: 15, fontWeight: '600', color: '#000', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 12 },
+    typeTabs: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+    typeTab: { flex: 1, height: 44, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+    typeTabActive: { backgroundColor: '#0D2E33', borderColor: '#0D2E33' },
+    typeTabText: { fontSize: 11, fontWeight: '800', color: '#6B7280' },
+    typeTabTextActive: { color: '#fff' },
+    regActions: { flexDirection: 'row', gap: 12 },
+    regCancel: { flex: 1, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    regCancelText: { fontSize: 14, fontWeight: '800', color: '#9CA3AF' },
+    regSubmit: { flex: 2, height: 50, borderRadius: 12, backgroundColor: '#0D2E33', alignItems: 'center', justifyContent: 'center' },
+    regSubmitText: { fontSize: 14, fontWeight: '900', color: '#fff' },
+    emptyContainer: { alignItems: 'center', padding: 40 },
+    regButton: { marginTop: 16, backgroundColor: '#F0FDF4', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+    regButtonText: { fontSize: 14, fontWeight: '800', color: '#67B1A1' },
+    walletGuard: { backgroundColor: '#F9FAFB', padding: 16, borderRadius: 16, marginBottom: 20 },
+    walletGuardInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    walletGuardText: { fontSize: 13, fontWeight: '800', color: '#67B1A1' },
+    insufficientText: { fontSize: 11, fontWeight: '700', color: '#EF4444', marginTop: 4 },
+    confirmBtnDisabled: { backgroundColor: '#F3F4F6' },
 });

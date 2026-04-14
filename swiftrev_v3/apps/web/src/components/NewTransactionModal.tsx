@@ -213,24 +213,30 @@ const NewTransactionModal = ({ isOpen, onClose, onSuccess, initialItem }: NewTra
                             </div>
 
                             <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                {patients
-                                    .filter(p => p.full_name?.toLowerCase().includes(searchPatient.toLowerCase()))
-                                    .map((p) => (
-                                        <button
-                                            key={p.id}
-                                            onClick={() => { setSelectedPatient(p); setStep(2); }}
-                                            className="w-full p-4 flex items-center gap-4 bg-card border border-border rounded-2xl hover:border-primary hover:bg-primary/5 transition-all text-left group"
-                                        >
-                                            <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground font-bold group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                                                {p.full_name?.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="font-bold text-foreground">{p.full_name}</p>
-                                                <p className="text-xs text-muted-foreground">{p.phone_number || 'No contact info'}</p>
-                                            </div>
-                                            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
-                                        </button>
-                                    ))}
+                                {patients.filter(p => p.full_name?.toLowerCase().includes(searchPatient.toLowerCase())).length > 0 ? (
+                                    patients
+                                        .filter(p => p.full_name?.toLowerCase().includes(searchPatient.toLowerCase()))
+                                        .map((p) => (
+                                            <button
+                                                key={p.id}
+                                                onClick={() => { setSelectedPatient(p); setStep(2); }}
+                                                className="w-full p-4 flex items-center gap-4 bg-card border border-border rounded-2xl hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                                            >
+                                                <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground font-bold group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                                                    {p.full_name?.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-bold text-foreground">{p.full_name}</p>
+                                                    <p className="text-xs text-muted-foreground">{p.phone_number || 'No contact info'}</p>
+                                                </div>
+                                                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                                            </button>
+                                        ))
+                                ) : (
+                                    <div className="p-12 text-center border-2 border-dashed border-border rounded-[2.5rem]">
+                                        <p className="text-muted-foreground font-medium italic">No patients found. Please register the patient first in the Patients tab.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

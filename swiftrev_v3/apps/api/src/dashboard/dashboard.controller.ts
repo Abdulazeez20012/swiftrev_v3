@@ -15,8 +15,10 @@ export class DashboardController {
     @Permissions('transactions:view') // Agents have transaction permissions
     async getAgentDashboard(
         @CurrentUser() user: any,
-        @Query('agentId') agentId: string,
+        @Query('agentId') agentId?: string,
+        @Query('hospitalId') hospitalId?: string,
     ) {
-        return this.dashboardService.getAgentStats(user.hospitalId, agentId);
+        const targetAgentId = (agentId && agentId !== 'undefined') ? agentId : user.userId;
+        return this.dashboardService.getAgentStats(user.hospitalId, targetAgentId);
     }
 }

@@ -9,6 +9,10 @@ export enum PatientType {
 
 export class CreatePatientDto {
     @IsUUID()
+    @IsOptional()
+    id?: string;
+
+    @IsUUID()
     @IsNotEmpty()
     hospitalId: string;
 
@@ -47,4 +51,8 @@ export class CreatePatientDto {
     @IsEnum(PatientType)
     @IsOptional()
     patientType?: PatientType;
+
+    @IsUUID()
+    @IsOptional()
+    departmentId?: string;
 }

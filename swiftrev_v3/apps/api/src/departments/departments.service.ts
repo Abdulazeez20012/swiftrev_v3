@@ -26,6 +26,19 @@ export class DepartmentsService {
         return data;
     }
 
+    async findAll() {
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase
+            .from('departments')
+            .select('*');
+
+        if (error) {
+            throw new BadRequestException(error.message);
+        }
+
+        return data;
+    }
+
     async findAllByHospital(hospitalId: string) {
         const supabase = this.supabaseService.getClient();
         const { data, error } = await supabase

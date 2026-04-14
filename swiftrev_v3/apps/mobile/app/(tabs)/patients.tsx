@@ -58,7 +58,7 @@ export default function PatientRegistration() {
         email: ''
     });
 
-    const { status, addToQueue, init } = useSyncStore();
+    const { status, addToQueue, init, fetchDepartments: fetchDeptsWrapper } = useSyncStore();
 
     useEffect(() => {
         init();
@@ -66,12 +66,17 @@ export default function PatientRegistration() {
     }, []);
 
     const fetchDepartments = async () => {
+        if (!user?.hospitalId && user?.role !== 'super_admin') {
+            setLoadingDepts(false);
+            return;
+        }
         setLoadingDepts(true);
         try {
-            const res = await api.get(`/departments?hospitalId=${user?.hospitalId}`);
-            setDepartments(res.data || []);
-        } catch (err) {
+            const data = await fetchDeptsWrapper(user?.hospitalId!);
+            setDepartments(data);
+        } catch (err: any) {
             console.error('Failed to fetch departments', err);
+            // Even if it fails, the wrapper handles offline data
         } finally {
             setLoadingDepts(false);
         }

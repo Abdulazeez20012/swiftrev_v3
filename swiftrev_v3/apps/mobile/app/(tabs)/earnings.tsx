@@ -84,8 +84,10 @@ function getPeriodRange(period: Period): { start: Date; end: Date; label: string
 }
 
 function filterByPeriod(transactions: any[], period: Period) {
+    if (!Array.isArray(transactions)) return [];
     const { start, end } = getPeriodRange(period);
     return transactions.filter(t => {
+        if (!t || !t.created_at) return false;
         const d = new Date(t.created_at);
         return d >= start && d <= end;
     });
@@ -126,8 +128,12 @@ export default function EarningsScreen() {
             }
         } catch (err) {
             console.error('Earnings fetch error', err);
-            const cached = await offlineStorage.getAll('history');
-            setAllTxns(cached);
+            try {
+                const cached = await offlineStorage.getAll('history');
+                setAllTxns(Array.isArray(cached) ? cached : []);
+            } catch (e) {
+                setAllTxns([]);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);

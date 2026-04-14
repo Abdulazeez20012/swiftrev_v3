@@ -45,12 +45,25 @@ export class ReportsService {
             return acc;
         }, {});
 
+        // Get counts
+        const { count: deptsCount } = await supabase
+            .from('departments')
+            .select('*', { count: 'exact', head: true })
+            .eq('hospital_id', hospitalId);
+
+        const { count: itemsCount } = await supabase
+            .from('revenue_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('hospital_id', hospitalId);
+
         return {
             timeframe,
             totalRevenue,
             transactionCount,
             byItem,
             data,
+            departmentsCount: deptsCount || 0,
+            revenueItemsCount: itemsCount || 0,
         };
     }
 

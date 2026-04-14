@@ -12,7 +12,9 @@ import {
     Activity,
     ShieldAlert,
     Sparkles,
-    BrainCircuit
+    BrainCircuit,
+    Building2,
+    Layers
 } from 'lucide-react';
 
 import NewTransactionModal from '../components/NewTransactionModal';
@@ -27,6 +29,8 @@ interface DashboardStats {
     peakDay: string;
     averageDaily: number;
     fraudAlerts: number;
+    departmentsCount: number;
+    revenueItemsCount: number;
 }
 
 interface StatCardProps {
@@ -126,7 +130,9 @@ const Dashboard = () => {
                 patientCount: patientsRes.data.length || 0,
                 peakDay: peakDayLabel,
                 averageDaily: avgDaily,
-                fraudAlerts: fraudCount
+                fraudAlerts: fraudCount,
+                departmentsCount: reportData.departmentsCount || 0,
+                revenueItemsCount: reportData.revenueItemsCount || 0
             });
         } catch (error) {
             console.error('Failed to fetch dashboard stats', error);
@@ -215,6 +221,23 @@ const Dashboard = () => {
                     icon={ShieldAlert}
                     onClick={() => window.location.href = '/security'}
                     style={{ borderColor: (stats?.fraudAlerts || 0) > 0 ? 'rgb(239 68 68 / 0.5)' : undefined }}
+                />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <StatCard
+                    label="Departments"
+                    value={stats?.departmentsCount || 0}
+                    subValue="Functional hospital units"
+                    icon={Building2}
+                    onClick={() => window.location.href = '/hospitals'}
+                />
+                <StatCard
+                    label="Active Services"
+                    value={stats?.revenueItemsCount || 0}
+                    subValue="Revenue generating items"
+                    icon={Layers}
+                    onClick={() => window.location.href = '/revenue-items'}
                 />
             </div>
 

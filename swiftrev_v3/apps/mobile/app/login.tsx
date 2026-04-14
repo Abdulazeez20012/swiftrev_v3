@@ -14,6 +14,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import Logo from '../src/components/Logo';
+import { Theme } from '../src/theme';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -48,14 +50,7 @@ export default function LoginScreen() {
         >
             <View style={styles.content}>
                 <View style={styles.header}>
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={require('../assets/logo.jpg')}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
-                    </View>
-                    <Text style={styles.title}>swiftRev</Text>
+                    <Logo size="xl" />
                     <Text style={styles.subtitle}>Hospital Revenue Management</Text>
                 </View>
 
@@ -65,7 +60,7 @@ export default function LoginScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>EMAIL ADDRESS</Text>
                         <View style={styles.inputContainer}>
-                            <Mail size={20} color="#67B1A1" style={styles.inputIcon} />
+                            <Mail size={20} color={Theme.colors.secondary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="agent@hospital.com"
@@ -80,7 +75,7 @@ export default function LoginScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>PASSWORD</Text>
                         <View style={styles.inputContainer}>
-                            <Lock size={20} color="#67B1A1" style={styles.inputIcon} />
+                            <Lock size={20} color={Theme.colors.secondary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="••••••••"
@@ -142,11 +137,11 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: '900',
         letterSpacing: -1.5,
-        color: '#0D2E33',
+        color: Theme.colors.primary,
     },
     subtitle: {
         fontSize: 14,
-        color: '#67B1A1',
+        color: Theme.colors.secondary,
         fontWeight: '700',
         marginTop: -2,
         textTransform: 'uppercase',
@@ -185,7 +180,7 @@ const styles = StyleSheet.create({
         color: '#000',
     },
     loginButton: {
-        backgroundColor: '#0D2E33',
+        backgroundColor: Theme.colors.primary,
         height: 56,
         borderRadius: 16,
         justifyContent: 'center',

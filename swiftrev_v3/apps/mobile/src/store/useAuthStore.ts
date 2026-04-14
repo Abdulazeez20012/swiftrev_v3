@@ -7,6 +7,8 @@ interface User {
     email: string;
     role: string;
     hospitalId: string;
+    avatar_url?: string;
+    logo_url?: string;
 }
 
 interface AuthState {
@@ -15,6 +17,7 @@ interface AuthState {
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     restoreSession: () => Promise<void>;
+    updateUser: (updates: Partial<User>) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -54,5 +57,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         await AsyncStorage.removeItem('access_token');
         await AsyncStorage.removeItem('user');
         set({ user: null });
+    },
+
+    updateUser: async (updates) => {
+        set((state) => {
+            if (!state.user) return state;
+            const updatedUser = { ...state.user, ...updates };
+            AsyncStorage.setItem('user', JSON.stringify(updatedUser)); // Non-blocking
+            return { user: updatedUser };
+        });
     },
 }));

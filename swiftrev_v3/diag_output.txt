@@ -1,0 +1,10 @@
+--- USERS TABLE ---
+Email: admintest@swiftrev.com | Name: Test Admin
+Email: agent@swiftrev.com | Name: Test Agent
+Email: admin@swiftrev.com | Name: System Admin
+Email: agenttest@swiftrev.com | Name: agentTest
+
+--- ROLES TABLE ---
+Role: super_admin
+Role: hospital_admin
+Role: field_agent

@@ -9,24 +9,29 @@ import {
     BarChart2
 } from 'lucide-react-native';
 
+import { Theme } from '../../src/theme';
+
+
 export default function TabLayout() {
     return (
         <Tabs screenOptions={{
-            tabBarActiveTintColor: '#67B1A1',
-            tabBarInactiveTintColor: '#9CA3AF',
+            tabBarActiveTintColor: Theme.colors.primary,
+            tabBarInactiveTintColor: Theme.colors.textMuted,
             tabBarStyle: {
-                backgroundColor: '#fff',
-                borderTopColor: '#F3F4F6',
-                height: 80,
-                paddingBottom: 16,
+                backgroundColor: Theme.colors.surface,
+                borderTopColor: Theme.colors.border,
+                height: 85,
+                paddingBottom: 24,
                 paddingTop: 8,
+                ...Theme.shadows.lg,
             },
             tabBarLabelStyle: {
+                ...Theme.typography.caption,
                 fontSize: 10,
-                fontWeight: '800',
                 letterSpacing: 0.5,
             },
         }}>
+
             <Tabs.Screen
                 name="index"
                 options={{

@@ -27,13 +27,13 @@ export default function RootLayout() {
 
         if (!loading) {
             const inAuthGroup = fragments[0] === '(tabs)';
+            const isLoginPage = fragments[0] === 'login';
+            const isProtectedRoute = !isLoginPage;
 
-            if (!user && inAuthGroup) {
+            if (!user && isProtectedRoute) {
                 router.replace('/login');
-            } else if (user && !inAuthGroup) {
-                checkBiometrics().then(() => {
-                    router.replace('/(tabs)');
-                });
+            } else if (user && isLoginPage) {
+                router.replace('/(tabs)');
             }
         }
     }, [user, loading, fragments]);
@@ -43,6 +43,8 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="login" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="payment" options={{ presentation: 'card' }} />
+                <Stack.Screen name="receipt" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="catalog" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="patient/[id]" options={{ title: 'Patient Profile' }} />

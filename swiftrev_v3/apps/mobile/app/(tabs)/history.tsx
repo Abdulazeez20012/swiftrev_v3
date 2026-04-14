@@ -7,63 +7,67 @@ import {
     TouchableOpacity,
     TextInput,
     RefreshControl,
-    ActivityIndicator
+    ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import {
     Search,
-    Filter as FilterIcon,
-    Calendar,
     ChevronRight,
     Receipt,
     Clock,
-    CheckCircle2,
-    AlertCircle,
     WifiOff,
-    X,
-    Banknote,
-    CreditCard
+    Filter,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useSyncStore } from '../../src/store/useSyncStore';
 import { offlineStorage } from '../../src/services/OfflineStorage';
 import api from '../../src/services/api';
-import { Modal } from 'react-native';
+import { Theme } from '../../src/theme';
+import { PremiumHeader, PremiumCard, SegmentedControl } from '../../src/components/PremiumUI';
 
 export default function TreatmentHistory() {
     const router = useRouter();
     const { user } = useAuthStore();
-    const { status, init } = useSyncStore();
+    const { status, init, syncNow } = useSyncStore();
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Filter States
-    const [showFilters, setShowFilters] = useState(false);
-    const [filterMethod, setFilterMethod] = useState<'all' | 'cash' | 'pos'>('all');
-    const [filterRange, setFilterRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
+    const [activeTab, setActiveTab] = useState('All');
+    const [pendingCount, setPendingCount] = useState(0);
 
     useEffect(() => {
         init();
     }, []);
 
+    useFocusEffect(
+        useCallback(() => {
+            // Trigger sync when online so new transactions appear immediately
+            if (status === 'online') {
+                syncNow().catch(() => {});
+            }
+            fetchHistory();
+        }, [status])
+    );
+
     const fetchHistory = async () => {
         try {
-            let apiRecords = [];
+            let apiRecords: any[] = [];
             if (status !== 'offline') {
                 try {
-                    const res = await api.get(`/transactions?hospitalId=${user?.hospitalId}&agentId=${user?.id}`);
-                    apiRecords = res.data;
-                    await offlineStorage.updateCache('history', res.data);
+                    const res = await api.get(`/transactions?hospitalId=${user?.hospitalId}&agentId=${user?.id}&limit=100`);
+                    apiRecords = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+                    await offlineStorage.updateCache('history', apiRecords);
                 } catch (e) {
-                    console.error('API history fetch failed', e);
                     apiRecords = await offlineStorage.getAll('history');
                 }
             } else {
                 apiRecords = await offlineStorage.getAll('history');
             }
 
+            // Always load pending queue items too
             const queue = await offlineStorage.getSyncQueue();
             const pendingTransactions = queue
                 .filter(item => item.type === 'transaction')
@@ -72,8 +76,13 @@ export default function TreatmentHistory() {
                     id: item.id,
                     created_at: new Date(item.timestamp).toISOString(),
                     status: 'pending_sync',
-                    isOffline: true
+                    isOffline: true,
+                    // Map field names for display
+                    revenue_items: { name: 'Pending Sync' },
+                    patients: { full_name: item.data?.patientName || 'Walk-in' },
                 }));
+
+            setPendingCount(pendingTransactions.length);
 
             const merged = [...pendingTransactions, ...apiRecords].sort((a, b) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -81,7 +90,7 @@ export default function TreatmentHistory() {
 
             setRecords(merged);
         } catch (err) {
-            console.error('History composite fetch failed', err);
+            console.error('History fetch failed', err);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -94,317 +103,202 @@ export default function TreatmentHistory() {
 
     const onRefresh = () => {
         setRefreshing(true);
+        if (status === 'online') syncNow().catch(() => {});
         fetchHistory();
     };
 
     const filteredRecords = records.filter(r => {
-        // Search filter
+        const patientName = r.patients?.full_name || '';
+        const serviceName = r.revenue_items?.name || '';
         const matchesSearch =
-            r.patients?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.revenue_items?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+            patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            serviceName.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // Method filter
-        const matchesMethod = filterMethod === 'all' || r.payment_method?.toLowerCase() === filterMethod;
-
-        // Date filter
-        const recordDate = new Date(r.created_at);
-        const now = new Date();
-        let matchesDate = true;
-        if (filterRange === 'today') {
-            matchesDate = recordDate.toDateString() === now.toDateString();
-        } else if (filterRange === 'week') {
-            const weekAgo = new Date();
-            weekAgo.setDate(now.getDate() - 7);
-            matchesDate = recordDate >= weekAgo;
-        } else if (filterRange === 'month') {
-            const monthAgo = new Date();
-            monthAgo.setMonth(now.getMonth() - 1);
-            matchesDate = recordDate >= monthAgo;
-        }
-
-        return matchesSearch && matchesMethod && matchesDate;
+        if (activeTab === 'All') return matchesSearch;
+        const isOfflineRecord = r.isOffline || r.status === 'pending_sync';
+        return matchesSearch && (activeTab === 'Pending' ? isOfflineRecord : !isOfflineRecord);
     });
 
+    // Grouping logic for Image 6 style
+    const groupHistoryByDate = (data: any[]) => {
+        const groups: { [key: string]: { total: number, count: number, items: any[] } } = {};
+        data.forEach(item => {
+            const dateStr = new Date(item.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+            if (!groups[dateStr]) {
+                groups[dateStr] = { total: 0, count: 0, items: [] };
+            }
+            groups[dateStr].total += item.amount;
+            groups[dateStr].count += 1;
+            groups[dateStr].items.push(item);
+        });
+        return groups;
+    };
+
+    const groupedData = groupHistoryByDate(filteredRecords);
+
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.searchContainer}>
-                    <View style={styles.searchBar}>
-                        <Search size={20} color="#9CA3AF" />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search patients or services..."
-                            placeholderTextColor="#9CA3AF"
-                            value={searchTerm}
-                            onChangeText={setSearchTerm}
-                        />
-                    </View>
-                    <TouchableOpacity
-                        style={[styles.filterButton, (filterMethod !== 'all' || filterRange !== 'all') && { backgroundColor: '#0D2E33' }]}
-                        onPress={() => setShowFilters(true)}
-                    >
-                        <FilterIcon size={20} color={(filterMethod !== 'all' || filterRange !== 'all') ? "#fff" : "#0D2E33"} />
+        <View style={{ flex: 1, backgroundColor: Theme.colors.background }}>
+            <PremiumHeader title="Transaction History" />
+            
+            <View style={styles.content}>
+                <View style={styles.searchBar}>
+                    <Search size={20} color={Theme.colors.textMuted} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search patients or services..."
+                        value={searchTerm}
+                        onChangeText={setSearchTerm}
+                    />
+                    <TouchableOpacity style={styles.filterBtn}>
+                        <Filter size={20} color={Theme.colors.primary} />
                     </TouchableOpacity>
                 </View>
-            </View>
 
-            <Modal visible={showFilters} animationType="slide" transparent>
-                <View style={styles.overlay}>
-                    <View style={styles.filterModal}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Filter Transactions</Text>
-                            <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.closeBtn}>
-                                <X size={20} color="#000" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.filterLabel}>PAYMENT METHOD</Text>
-                        <View style={styles.filterOptions}>
-                            {['all', 'cash', 'pos'].map(m => (
-                                <TouchableOpacity
-                                    key={m}
-                                    style={[styles.option, filterMethod === m && styles.optionActive]}
-                                    onPress={() => setFilterMethod(m as any)}
-                                >
-                                    <Text style={[styles.optionText, filterMethod === m && styles.optionTextActive]}>
-                                        {m.toUpperCase()}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <Text style={styles.filterLabel}>DATE RANGE</Text>
-                        <View style={[styles.filterOptions, { flexWrap: 'wrap' }]}>
-                            {['all', 'today', 'week', 'month'].map(r => (
-                                <TouchableOpacity
-                                    key={r}
-                                    style={[styles.option, filterRange === r && styles.optionActive]}
-                                    onPress={() => setFilterRange(r as any)}
-                                >
-                                    <Text style={[styles.optionText, filterRange === r && styles.optionTextActive]}>
-                                        {r.toUpperCase()}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.applyBtn}
-                            onPress={() => setShowFilters(false)}
-                        >
-                            <Text style={styles.applyBtnText}>Apply Filters</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            <ScrollView
-                contentContainerStyle={styles.list}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
-            >
-                <Text style={styles.sectionTitle}>Transaction Stream</Text>
-                {loading ? (
-                    <View style={styles.loaderContainer}>
-                        <ActivityIndicator color="#67B1A1" />
-                    </View>
-                ) : filteredRecords.map((item) => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={[styles.recordCard, item.isOffline && styles.recordCardOffline]}
-                        onPress={() => !item.isOffline && router.push(`/receipt/${item.id}`)}
-                        disabled={item.isOffline}
-                    >
-                        <View style={[styles.iconBox, item.isOffline && styles.iconBoxOffline]}>
-                            {item.isOffline ? <WifiOff size={22} color="#F59E0B" /> : <Receipt size={22} color="#0D2E33" />}
-                        </View>
-                        <View style={styles.recordContent}>
-                            <View style={styles.recordRow}>
-                                <Text style={styles.patientName}>
-                                    {item.patients?.full_name || item.fullName || 'Walk-in Patient'}
-                                </Text>
-                                <Text style={styles.recordCost}>₦{item.amount.toLocaleString()}</Text>
-                            </View>
-                            <Text style={styles.serviceName}>{item.revenue_items?.name || item.serviceName || 'Standard Service'}</Text>
-                            <View style={styles.recordFooter}>
-                                <View style={styles.dateBox}>
-                                    <Clock size={12} color="#9CA3AF" />
-                                    <Text style={styles.recordDate}>
-                                        {item.isOffline ? 'Pending Sync' : new Date(item.created_at).toLocaleDateString()}
-                                    </Text>
-                                </View>
-                                <StatusBadge status={item.status} />
-                            </View>
-                        </View>
-                        <ChevronRight size={18} color={item.isOffline ? "#F3F4F6" : "#E5E7EB"} />
-                    </TouchableOpacity>
-                ))}
-
-                {!loading && filteredRecords.length === 0 && (
-                    <View style={styles.emptyBox}>
-                        <AlertCircle size={40} color="#E5E7EB" />
-                        <Text style={styles.emptyText}>No transactions found.</Text>
+                <SegmentedControl 
+                    options={['All', 'Synced', 'Pending']} 
+                    selected={activeTab} 
+                    onSelect={setActiveTab} 
+                />
+                {pendingCount > 0 && (
+                    <View style={styles.pendingBanner}>
+                        <Clock size={14} color={Theme.colors.accent} />
+                        <Text style={styles.pendingText}>{pendingCount} transaction(s) waiting to sync to server</Text>
                     </View>
                 )}
-            </ScrollView>
+
+                <ScrollView
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                >
+                    {loading ? (
+                        <ActivityIndicator color={Theme.colors.primary} style={{ marginTop: 40 }} />
+                    ) : Object.keys(groupedData).length > 0 ? (
+                        Object.keys(groupedData).map((date) => (
+                            <View key={date} style={styles.dateGroup}>
+                                <TouchableOpacity style={styles.groupHeader}>
+                                    <View style={styles.groupInfo}>
+                                        <Text style={styles.groupDate}>{date}</Text>
+                                        <Text style={styles.groupCount}>TOTAL ({groupedData[date].count})</Text>
+                                    </View>
+                                    <View style={styles.groupRight}>
+                                        <Text style={styles.groupTotal}>₦{groupedData[date].total.toLocaleString()}</Text>
+                                        <ChevronRight size={20} color="#fff" />
+                                    </View>
+                                </TouchableOpacity>
+                                
+                                {groupedData[date].items.map((item) => (
+                                    <PremiumCard key={item.id} style={styles.historyItem} onPress={() => !item.isOffline && router.push(`/receipt/${item.id}`)}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.itemId} numberOfLines={1}>
+                                                {item.revenue_items?.name || 'Service'}
+                                            </Text>
+                                            <Text style={styles.itemMeta}>
+                                                {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {item.patients?.full_name || 'Walk-in'}
+                                            </Text>
+                                        </View>
+                                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                                            <Text style={styles.itemAmount}>₦{Number(item.amount || 0).toLocaleString()}</Text>
+                                            {item.isOffline && (
+                                                <View style={styles.pendingPill}>
+                                                    <Text style={styles.pendingPillText}>PENDING</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </PremiumCard>
+                                ))}
+                            </View>
+                        ))
+                    ) : (
+                        <View style={styles.emptyBox}>
+                            <WifiOff size={48} color={Theme.colors.border} />
+                            <Text style={styles.emptyText}>No transactions found.</Text>
+                        </View>
+                    )}
+                </ScrollView>
+            </View>
         </View>
     );
 }
 
-const StatusBadge = ({ status }: { status: string }) => {
-    const isComplete = status?.toLowerCase() === 'completed' || status?.toLowerCase() === 'paid';
-    return (
-        <View style={[styles.badge, isComplete ? styles.badgePaid : styles.badgePending]}>
-            <Text style={[styles.badgeText, isComplete ? styles.badgeTextPaid : styles.badgeTextPending]}>
-                {status?.toUpperCase() || 'PENDING'}
-            </Text>
-        </View>
-    );
-};
-
 const styles = StyleSheet.create({
-    container: {
+    content: {
         flex: 1,
-        backgroundColor: '#fff',
-    },
-    header: {
-        paddingTop: 60,
-        paddingHorizontal: 24,
-        paddingBottom: 24,
-        backgroundColor: '#fff',
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        gap: 12,
+        paddingHorizontal: Theme.spacing.md,
     },
     searchBar: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
-        borderRadius: 16,
-        paddingHorizontal: 16,
+        backgroundColor: Theme.colors.surface,
+        borderRadius: Theme.radius.lg,
+        paddingHorizontal: Theme.spacing.md,
         height: 54,
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
+        marginTop: Theme.spacing.md,
+        ...Theme.shadows.sm,
     },
     searchInput: {
         flex: 1,
-        marginLeft: 12,
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#000',
-    },
-    filterButton: {
-        width: 54,
-        height: 54,
-        borderRadius: 16,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    list: {
-        paddingHorizontal: 24,
-        paddingBottom: 40,
-    },
-    sectionTitle: {
+        marginLeft: Theme.spacing.sm,
+        ...Theme.typography.body,
         fontSize: 14,
-        fontWeight: '800',
-        color: '#9CA3AF',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        marginBottom: 20,
     },
-    recordCard: {
-        backgroundColor: '#fff',
-        paddingVertical: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+    filterBtn: {
+        padding: 8,
     },
-    recordCardOffline: {
-        backgroundColor: '#FFFBEB',
-        borderBottomColor: '#FEF3C7',
+    dateGroup: {
+        marginBottom: Theme.spacing.lg,
     },
-    iconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 16,
-    },
-    iconBoxOffline: {
-        backgroundColor: '#FEF3C7',
-    },
-    recordContent: {
-        flex: 1,
-        marginRight: 12,
-    },
-    recordRow: {
+    groupHeader: {
+        backgroundColor: Theme.colors.primaryLight,
+        padding: Theme.spacing.md,
+        borderRadius: Theme.radius.md,
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Theme.spacing.sm,
+    },
+    groupInfo: {
+        flex: 1,
+    },
+    groupDate: {
+        ...Theme.typography.h3,
+        color: '#fff',
+        fontSize: 16,
+    },
+    groupCount: {
+        ...Theme.typography.caption,
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 10,
+        marginTop: 2,
+    },
+    groupRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Theme.spacing.sm,
+    },
+    groupTotal: {
+        ...Theme.typography.h3,
+        color: '#fff',
+        fontSize: 18,
+    },
+    historyItem: {
+        flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 4,
+        padding: Theme.spacing.md,
     },
-    patientName: {
+    itemId: {
+        ...Theme.typography.label,
+        fontSize: 14,
+    },
+    itemMeta: {
+        ...Theme.typography.caption,
+        color: Theme.colors.textMuted,
+        textTransform: 'none',
+        marginTop: 2,
+    },
+    itemAmount: {
+        ...Theme.typography.h3,
         fontSize: 16,
-        fontWeight: '800',
-        color: '#000',
-        letterSpacing: -0.3,
-    },
-    recordCost: {
-        fontSize: 15,
-        fontWeight: '900',
-        color: '#000',
-    },
-    serviceName: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#666',
-        marginBottom: 10,
-    },
-    recordFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    dateBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    recordDate: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#9CA3AF',
-    },
-    badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    badgePaid: {
-        backgroundColor: '#F0FDF4',
-    },
-    badgePending: {
-        backgroundColor: '#FEFCE8',
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 0.5,
-    },
-    badgeTextPaid: {
-        color: '#67B1A1',
-    },
-    badgeTextPending: {
-        color: '#CA8A04',
-    },
-    loaderContainer: {
-        padding: 40,
-        alignItems: 'center',
     },
     emptyBox: {
         padding: 80,
@@ -412,83 +306,34 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     emptyText: {
-        fontSize: 14,
-        color: '#9CA3AF',
-        fontWeight: '700',
-        marginTop: 16,
+        ...Theme.typography.body,
+        color: Theme.colors.textMuted,
+        marginTop: Theme.spacing.md,
     },
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    filterModal: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        padding: 24,
-        paddingBottom: 40,
-    },
-    modalHeader: {
+    pendingBanner: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '900',
-        color: '#000',
-    },
-    closeBtn: {
+        backgroundColor: '#FEF3C7',
         padding: 8,
-        backgroundColor: '#F3F4F6',
         borderRadius: 12,
+        gap: 6,
+        marginBottom: 8,
     },
-    filterLabel: {
+    pendingText: {
         fontSize: 11,
+        fontWeight: '700',
+        color: '#92400E',
+        flex: 1,
+    },
+    pendingPill: {
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    pendingPillText: {
+        fontSize: 9,
         fontWeight: '900',
-        color: '#9CA3AF',
-        letterSpacing: 1.5,
-        marginBottom: 16,
-        marginTop: 8,
+        color: '#92400E',
     },
-    filterOptions: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 24,
-    },
-    option: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
-    },
-    optionActive: {
-        backgroundColor: '#0D2E33',
-        borderColor: '#0D2E33',
-    },
-    optionText: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#0D2E33',
-    },
-    optionTextActive: {
-        color: '#fff',
-    },
-    applyBtn: {
-        backgroundColor: '#0D2E33',
-        height: 56,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 8,
-    },
-    applyBtnText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '900',
-    }
 });

@@ -12,6 +12,7 @@ export class PatientsService {
         const { data, error } = await supabase
             .from('patients')
             .insert([{
+                id: createPatientDto.id, // Use provided ID (from mobile) or let Postgres generate one
                 hospital_id: createPatientDto.hospitalId,
                 full_name: createPatientDto.fullName,
                 phone_number: createPatientDto.phoneNumber,

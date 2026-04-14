@@ -44,14 +44,9 @@ export class TransactionsService {
                 amount: createTransactionDto.amount,
                 payment_method: createTransactionDto.paymentMethod,
                 client_transaction_id: createTransactionDto.offlineId || uuidv4(),
-                insurance_provider_id: createTransactionDto.insuranceProviderId,
-                auth_code: createTransactionDto.authCode,
-                proof_image_url: createTransactionDto.proofImageUrl,
-                latitude: createTransactionDto.latitude,
-                longitude: createTransactionDto.longitude,
                 status: 'completed',
             }])
-            .select('*, patients(full_name, email, insurance_number), insurance_providers(name), revenue_items(name), hospitals(name)')
+            .select('*, patients(full_name, email, insurance_number), revenue_items(name, departments(name)), hospitals(name, address, logo_url)')
             .single();
 
         if (txError) {
@@ -59,14 +54,27 @@ export class TransactionsService {
             throw new BadRequestException(txError.message);
         }
 
-        // 3. Update hospital wallet balance
-        const { error: walletError } = await supabase.rpc('update_wallet_balance', {
-            h_id: createTransactionDto.hospitalId,
-            amt: createTransactionDto.amount
-        });
-
-        if (walletError) {
-            this.logger.error(`Failed to update wallet for hospital ${createTransactionDto.hospitalId}: ${walletError.message}`);
+        // 3. Update agent float (deduct) and hospital revenue (add)
+        // Note: Using the new RPC that handles both u_id (agent) and NULL (master)
+        try {
+            await Promise.all([
+                // Deduct from agent operating float
+                supabase.rpc('update_wallet_balance', {
+                    h_id: createTransactionDto.hospitalId,
+                    amt: -Number(createTransactionDto.amount),
+                    u_id: createdBy
+                }),
+                // Add to hospital revenue master
+                supabase.rpc('update_wallet_balance', {
+                    h_id: createTransactionDto.hospitalId,
+                    amt: Number(createTransactionDto.amount),
+                    u_id: null
+                })
+            ]);
+        } catch (walletError: any) {
+            this.logger.error(`Failed to update wallets for hospital/agent: ${walletError.message}`);
+            // We don't necessarily throw here if the transaction is already written,
+            // but in a production system, this should be a DB transaction.
         }
 
         // 4. Trigger Fraud Detection (Async)

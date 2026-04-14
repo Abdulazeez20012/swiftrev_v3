@@ -1,4 +1,4 @@
-name: Deployment
+name: CI/CD Pipeline
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    name: Build & Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -16,7 +17,42 @@ jobs:
         with:
           node-version: '18.x'
           cache: 'npm'
-      - run: npm install
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
+      - name: Install Dependencies
+        run: npm install
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  test:
+    name: Unit & Integration Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm install
+      - name: Run Tests
+        run: npm test
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Deploy API to Render
+        run: |
+          echo "Deploying API to Render..."
+          # curl -X POST https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}
+      - name: Deploy Web to Vercel
+        run: |
+          echo "Deploying Web to Vercel..."
+          # npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod

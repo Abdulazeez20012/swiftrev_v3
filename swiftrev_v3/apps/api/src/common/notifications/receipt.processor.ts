@@ -29,11 +29,13 @@ export class ReceiptProcessor extends WorkerHost {
                 const receiptData = {
                     id: transaction.id.split('-')[0].toUpperCase(),
                     hospitalName: transaction.hospitals?.name || 'SwiftRev Partner Hospital',
+                    hospitalLogo: transaction.hospitals?.logo_url,
+                    hospitalAddress: transaction.hospitals?.address || 'Medical Center Address',
                     date: new Date(transaction.created_at).toLocaleString(),
                     patientName: transaction.patients?.full_name || 'Valued Patient',
                     paymentMethod: transaction.payment_method.toUpperCase(),
                     revenueItemName: transaction.revenue_items?.name,
-                    departmentName: transaction.departments?.name || 'General Services',
+                    departmentName: transaction.revenue_items?.departments?.name || 'General Services',
                     amount: transaction.amount.toLocaleString(),
                 };
 

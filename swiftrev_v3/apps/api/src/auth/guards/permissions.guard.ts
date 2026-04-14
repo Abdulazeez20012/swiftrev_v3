@@ -17,19 +17,22 @@ export class PermissionsGuard implements CanActivate {
         }
 
         const { user } = context.switchToHttp().getRequest();
+        const role = user?.role?.toLowerCase();
+
+        console.log(`PermissionsGuard: user=${user?.email}, role=${user?.role}, required=${requiredPermissions}`);
 
         // Super Admin bypass
-        if (user.role === 'super_admin') {
+        if (role === 'super_admin') {
             return true;
         }
 
-        const userPermissions = user.permissions || {};
+        const userPermissions = user?.permissions || {};
 
-        // Check if user has required permissions
-        // This is a basic implementation, can be expanded for complex JSON nested permissions
-        const hasPermission = requiredPermissions.every((permission) => {
+        const hasPermission = requiredPermissions.some((permission) => {
             const [module, action] = permission.split(':');
             const modulePermissions = userPermissions[module];
+
+            console.log(`PermissionsGuard Check: module=${module}, action=${action}, userHas=${JSON.stringify(modulePermissions)}`);
 
             if (Array.isArray(modulePermissions)) {
                 return modulePermissions.includes(action) || modulePermissions.includes('all');

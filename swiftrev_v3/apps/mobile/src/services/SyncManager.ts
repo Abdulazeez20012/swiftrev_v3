@@ -111,10 +111,49 @@ class SyncManager {
 
     private async syncItem(item: SyncItem) {
         if (item.type === 'transaction') {
-            return api.post('/transactions', item.data);
+            // Strip out extra fields used only for local display in the mobile app, 
+            // since the backend validation pipe explicitly forbids non-whitelisted fields.
+            const { agentId, status, patientName, revenue_items, ...cleanData } = item.data;
+            return api.post('/transactions', cleanData);
         } else if (item.type === 'patient') {
-            return api.post('/patients', item.data);
+            const { offlineId, ...cleanPatientData } = item.data;
+            if (cleanPatientData.email === '') delete cleanPatientData.email;
+            return api.post('/patients', cleanPatientData);
         }
+    }
+
+    // --- Caching Methods ---
+
+    async fetchAndCacheDepartments(hospitalId: string) {
+        if (!this.isOnline()) return await offlineStorage.getAll('departments' as any);
+        
+        try {
+            const res = await api.get(`/departments?hospitalId=${hospitalId}`);
+            const data = Array.isArray(res.data) ? res.data : [];
+            await offlineStorage.updateCache('departments' as any, data);
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch departments for cache:', error);
+            return await offlineStorage.getAll('departments' as any);
+        }
+    }
+
+    async fetchAndCacheRevenueItems(hospitalId: string) {
+        if (!this.isOnline()) return await offlineStorage.getAll('revenue_items');
+        
+        try {
+            const res = await api.get(`/revenue-items?hospitalId=${hospitalId}`);
+            const data = Array.isArray(res.data) ? res.data : [];
+            await offlineStorage.updateCache('revenue_items', data);
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch revenue items for cache:', error);
+            return await offlineStorage.getAll('revenue_items');
+        }
+    }
+
+    async getOfflineData(key: 'departments' | 'revenue_items' | 'patients' | 'history') {
+        return await offlineStorage.getAll(key as any);
     }
 
     async queueOffline(type: 'transaction' | 'patient', data: any) {
